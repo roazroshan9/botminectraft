@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { UserBotRepo, LiveLogRepo } from "../database/Database.js";
+import { UserBotRepo, LiveLogRepo, SupportRepo } from "../database/Database.js";
 import { BotManager } from "../bot/BotManager.js";
 import { getTier } from "../config/tiers.js";
 import { parseCommand } from "../commands/CommandParser.js";
+import { io } from "../app.js";
 
 const router = Router();
 
@@ -218,6 +219,23 @@ router.delete("/bots/:id", (req, res) => {
 
   UserBotRepo.delete(dbBotId);
   res.json({ message: "Bot deleted" });
+});
+
+// ─── Support ──────────────────────────────────────────────────────────────────
+
+router.get("/support", (req, res) => {
+  const userId = req.user!.userId;
+  const messages = SupportRepo.getThreadsByUser(userId);
+  res.json({ messages });
+});
+
+router.post("/support", (req, res) => {
+  const userId = req.user!.userId;
+  const { message } = req.body as { message: string };
+  if (!message?.trim()) { res.status(400).json({ error: "message is required" }); return; }
+  const msg = SupportRepo.insert(userId, message.trim(), "user");
+  io.emit("support:new_message", { userId, username: req.user!.username, message: msg });
+  res.status(201).json({ message: msg });
 });
 
 export default router;
