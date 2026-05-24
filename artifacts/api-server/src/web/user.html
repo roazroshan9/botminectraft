@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MC Bot - User Panel</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3352;
+    --accent: #5c7cfa;
+    --green: #37b24d;
+    --red: #e03131;
+    --warn: #f59f00;
+    --text: #c9d1d9;
+    --muted: #6e7681;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+  .ws-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: inline-block; margin-right: 6px; }
+  .ws-dot.on { background: var(--green); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .card h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+
+  .bot-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+  .bot-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .bot-name { font-weight: 700; color: #fff; font-size: 15px; }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .badge.connected { background: rgba(55,178,77,0.15); color: var(--green); }
+  .badge.disconnected { background: rgba(224,49,49,0.15); color: var(--red); }
+  .badge.connecting { background: rgba(245,159,0,0.15); color: var(--warn); }
+  .badge.error { background: rgba(224,49,49,0.15); color: var(--red); }
+
+  .bot-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+  .stat { text-align: center; background: var(--bg); border-radius: 6px; padding: 8px; }
+  .stat-v { font-size: 18px; font-weight: 700; color: #fff; }
+  .stat-l { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+
+  .bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 4px; }
+  .bar-fill-g { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.4s; }
+  .bar-fill-y { height: 100%; background: var(--warn); border-radius: 3px; transition: width 0.4s; }
+
+  .bot-task { font-size: 12px; color: var(--accent); margin-top: 6px; }
+  .bot-pos { font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 3px; }
+
+  .cmd-section { margin-top: 10px; }
+  .cmd-row { display: flex; gap: 6px; margin-top: 6px; }
+  .cmd-input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; outline: none; }
+  .cmd-input:focus { border-color: var(--accent); }
+  .btn { padding: 7px 14px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn-blue { background: var(--accent); color: #fff; }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn:hover { opacity: 0.85; }
+
+  .quick-cmds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .qbtn { padding: 5px 12px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface2); color: var(--text); font-size: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .qbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .log-box { background: #0a0c12; border-radius: 6px; padding: 10px; height: 140px; overflow-y: auto; font-family: monospace; font-size: 11px; margin-top: 10px; }
+  .log-line { color: #7ec8a4; padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+
+  .inv-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; margin-top: 10px; }
+  .inv-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 9px; padding: 2px; }
+  .inv-cell .cn { font-weight: 700; color: #fff; font-size: 11px; }
+  .inv-cell .nm { color: var(--muted); text-align: center; word-break: break-all; font-size: 8px; }
+
+  .result-box { font-size: 12px; color: var(--green); font-family: monospace; padding: 6px 10px; background: rgba(55,178,77,0.08); border-radius: 4px; margin-top: 6px; display: none; }
+
+  .no-bots { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .no-bots svg { opacity: 0.2; margin-bottom: 12px; }
+
+  .section-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 14px; }
+
+  @media (max-width: 600px) {
+    .bot-stats { grid-template-columns: 1fr 1fr; }
+    .inv-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⛏ MC Bot — User Panel</h1>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span><span class="ws-dot" id="ws-dot"></span><span id="ws-lbl">Connecting...</span></span>
+    <a href="/api/" style="color:var(--muted);font-size:12px;text-decoration:none">Admin →</a>
+  </div>
+</header>
+
+<div class="container">
+  <div id="no-bots" class="no-bots" style="display:none">
+    <svg width="56" height="56" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+    <p>No bots online right now</p>
+  </div>
+  <div id="bot-container"></div>
+</div>
+
+<script src="/api/socket.io/socket.io.js"></script>
+<script>
+const socket = io({ auth: { password: 'admin' }, path: '/api/socket.io/' });
+const bots = {};
+
+socket.on('connect', () => {
+  document.getElementById('ws-dot').className = 'ws-dot on';
+  document.getElementById('ws-lbl').textContent = 'Live';
+});
+socket.on('disconnect', () => {
+  document.getElementById('ws-dot').className = 'ws-dot';
+  document.getElementById('ws-lbl').textContent = 'Offline';
+});
+
+socket.on('bots:all', data => {
+  data.forEach(b => { bots[b.id] = b; });
+  renderAll();
+});
+
+socket.on('bot:status', ({ id, status }) => {
+  if (bots[id]) { bots[id].status = status; updateBadge(id, status); }
+});
+
+socket.on('bot:health', ({ id, health, food }) => {
+  if (!bots[id]) return;
+  bots[id].health = health; bots[id].food = food;
+  const hEl = document.getElementById(`h-${id}`);
+  const fEl = document.getElementById(`f-${id}`);
+  const hBar = document.getElementById(`hbar-${id}`);
+  const fBar = document.getElementById(`fbar-${id}`);
+  if (hEl) hEl.textContent = Math.round(health);
+  if (fEl) fEl.textContent = Math.round(food);
+  if (hBar) hBar.style.width = (health / 20 * 100) + '%';
+  if (fBar) fBar.style.width = (food / 20 * 100) + '%';
+});
+
+socket.on('bot:position', ({ id, pos }) => {
+  if (!pos) return;
+  const el = document.getElementById(`pos-${id}`);
+  if (el) el.textContent = `📍 ${pos.x} ${pos.y} ${pos.z}`;
+});
+
+socket.on('bot:log', ({ id, entry }) => {
+  const box = document.getElementById(`log-${id}`);
+  if (!box) return;
+  const d = document.createElement('div');
+  d.className = 'log-line';
+  d.textContent = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.]+Z\]\s?/, '');
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  while (box.children.length > 80) box.removeChild(box.firstChild);
+});
+
+socket.on('bot:inventory', ({ id, items }) => {
+  renderInventory(id, items);
+});
+
+socket.on('bot:tasks', ({ id, tasks }) => {
+  const el = document.getElementById(`task-${id}`);
+  if (el) {
+    const running = tasks.find(t => t.status === 'running');
+    el.textContent = running ? `⚡ ${running.name}` : '';
+  }
+});
+
+socket.on('command:result', ({ botId, result }) => {
+  showResult(botId, result);
+});
+
+function renderAll() {
+  const botArr = Object.values(bots);
+  const container = document.getElementById('bot-container');
+  document.getElementById('no-bots').style.display = botArr.length ? 'none' : 'block';
+
+  botArr.forEach(b => {
+    if (!document.getElementById(`bot-${b.id}`)) {
+      container.appendChild(createBotCard(b));
+    }
+    updateBotCard(b);
+  });
+}
+
+function createBotCard(b) {
+  const div = document.createElement('div');
+  div.id = `bot-${b.id}`;
+  div.className = 'bot-item';
+  div.innerHTML = `
+    <div class="bot-header">
+      <div class="bot-name">${escHtml(b.username)}</div>
+      <span class="badge ${b.status}" id="badge-${b.id}">${b.status}</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${escHtml(b.host)}:${b.port} • v${b.version}</div>
+    <div class="bot-stats">
+      <div class="stat">
+        <div class="stat-v" id="h-${b.id}">${Math.round(b.health||0)}</div>
+        <div class="stat-l">Health</div>
+        <div class="bar"><div class="bar-fill-g" id="hbar-${b.id}" style="width:${(b.health||0)/20*100}%"></div></div>
+      </div>
+      <div class="stat">
+        <div class="stat-v" id="f-${b.id}">${Math.round(b.food||0)}</div>
+        <div class="stat-l">Food</div>
+        <div class="bar"><div class="bar-fill-y" id="fbar-${b.id}" style="width:${(b.food||0)/20*100}%"></div></div>
+      </div>
+    </div>
+    <div class="bot-task" id="task-${b.id}"></div>
+    <div class="bot-pos" id="pos-${b.id}">${b.position ? `📍 ${b.position.x} ${b.position.y} ${b.position.z}` : ''}</div>
+
+    <div class="cmd-section">
+      <div class="quick-cmds">
+        <span class="qbtn" onclick="qcmd('${b.id}','stop')">⏹ Stop</span>
+        <span class="qbtn" onclick="qcmd('${b.id}','mine diamond 16')">💎 Mine Diamond</span>
+        <span class="qbtn" onclick="qcmd('${b.id}','farm wheat')">🌾 Farm Wheat</span>
+        <span class="qbtn" onclick="qcmd('${b.id}','find village')">🏘 Find Village</span>
+        <span class="qbtn" onclick="qcmd('${b.id}','attack zombie')">⚔ Fight Zombies</span>
+        <span class="qbtn" onclick="qcmd('${b.id}','organize')">📦 Organize Inv</span>
+        <span class="qbtn" onclick="qcmd('${b.id}','deposit')">🗄 Deposit Items</span>
+        <span class="qbtn" onclick="qcmd('${b.id}','status')">📊 Status</span>
+      </div>
+      <div class="cmd-row">
+        <input class="cmd-input" id="cmd-${b.id}" placeholder="Type command... (e.g. mine iron 32)" onkeydown="if(event.key==='Enter')sendCmd('${b.id}')"/>
+        <button class="btn btn-blue" onclick="sendCmd('${b.id}')">Send</button>
+      </div>
+      <div class="result-box" id="result-${b.id}"></div>
+    </div>
+
+    <div class="log-box" id="log-${b.id}"></div>
+
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Inventory</div>
+      <div class="inv-grid" id="inv-${b.id}"></div>
+    </div>
+  `;
+  return div;
+}
+
+function updateBotCard(b) {
+  updateBadge(b.id, b.status);
+  const hEl = document.getElementById(`h-${b.id}`);
+  if (hEl) hEl.textContent = Math.round(b.health||0);
+  document.getElementById(`hbar-${b.id}`)?.style && (document.getElementById(`hbar-${b.id}`).style.width = (b.health||0)/20*100+'%');
+  document.getElementById(`fbar-${b.id}`)?.style && (document.getElementById(`fbar-${b.id}`).style.width = (b.food||0)/20*100+'%');
+  renderInventory(b.id, b.inventory || []);
+  const logs = b.logs || [];
+  const logBox = document.getElementById(`log-${b.id}`);
+  if (logBox && !logBox.children.length) {
+    logs.slice(-20).forEach(entry => {
+      const d = document.createElement('div');
+      d.className = 'log-line';
+      d.textContent = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.]+Z\]\s?/, '');
+      logBox.appendChild(d);
+    });
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+}
+
+function updateBadge(id, status) {
+  const el = document.getElementById(`badge-${id}`);
+  if (el) { el.className = `badge ${status}`; el.textContent = status; }
+}
+
+function renderInventory(id, items) {
+  const grid = document.getElementById(`inv-${id}`);
+  if (!grid) return;
+  const slots = Array(18).fill(null);
+  items.forEach(item => { if (item.slot < 18) slots[item.slot] = item; });
+  grid.innerHTML = slots.map(item => item
+    ? `<div class="inv-cell" title="${item.name} x${item.count}"><div class="cn">${item.count}</div><div class="nm">${item.name.replace(/_/g,' ').slice(0,8)}</div></div>`
+    : `<div class="inv-cell" style="opacity:.15">·</div>`
+  ).join('');
+}
+
+function qcmd(botId, cmd) {
+  socket.emit('bot:command', { botId, raw: cmd });
+  showResult(botId, `Sending: ${cmd}...`);
+}
+
+function sendCmd(botId) {
+  const input = document.getElementById(`cmd-${botId}`);
+  const val = input.value.trim();
+  if (!val) return;
+  socket.emit('bot:command', { botId, raw: val });
+  showResult(botId, `Sending: ${val}...`);
+  input.value = '';
+}
+
+function showResult(botId, msg) {
+  const el = document.getElementById(`result-${botId}`);
+  if (!el) return;
+  el.textContent = `> ${msg}`;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

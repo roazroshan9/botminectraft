@@ -63,6 +63,10 @@ app.get(["/", "/api", "/api/"], (_req, res) => {
   res.sendFile(path.join(staticDir, "dashboard.html"));
 });
 
+app.get(["/user", "/api/user", "/api/user/"], (_req, res) => {
+  res.sendFile(path.join(staticDir, "user.html"));
+});
+
 app.use(express.static(staticDir));
 
 app.use("/api", router);
