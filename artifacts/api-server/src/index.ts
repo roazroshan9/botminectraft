@@ -1,25 +1,28 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import server from "./app.js";
+import { logger } from "./lib/logger.js";
 
 const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
+const port = rawPort ? Number(rawPort) : 3000;
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+server.listen(port, "0.0.0.0", () => {
+  logger.info({ port }, "🤖 Minecraft AI Bot Platform listening");
+  logger.info(`   Dashboard: http://localhost:${port}`);
+  logger.info(`   API:       http://localhost:${port}/api/health`);
+});
 
-  logger.info({ port }, "Server listening");
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "Uncaught exception");
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "Unhandled rejection");
+});
+
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received, shutting down gracefully");
+  process.exit(0);
 });

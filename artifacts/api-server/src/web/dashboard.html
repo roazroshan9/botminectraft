@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minecraft AI Bot Platform</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3352;
+    --accent: #5c7cfa;
+    --accent2: #37b24d;
+    --danger: #e03131;
+    --warn: #f59f00;
+    --text: #c9d1d9;
+    --muted: #6e7681;
+    --green: #2f9e44;
+    --red: #c92a2a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px; width: 360px; text-align: center; }
+  .login-card h1 { font-size: 22px; margin-bottom: 8px; color: #fff; }
+  .login-card p { color: var(--muted); margin-bottom: 24px; }
+  
+  #app { display: none; }
+  
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 18px; color: #fff; font-weight: 700; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .ws-status { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .ws-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+  .ws-dot.connected { background: var(--accent2); }
+  
+  .layout { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 53px); overflow: hidden; }
+  
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; }
+  .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-header h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  
+  .bot-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .bot-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s; }
+  .bot-card:hover { border-color: var(--accent); }
+  .bot-card.active { border-color: var(--accent); background: rgba(92, 124, 250, 0.08); }
+  .bot-card-name { font-weight: 600; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .bot-card-info { font-size: 12px; color: var(--muted); }
+  .status-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+  .status-badge.connected { background: rgba(47,158,68,0.15); color: #37b24d; }
+  .status-badge.connecting { background: rgba(245,159,0,0.15); color: #f59f00; }
+  .status-badge.disconnected { background: rgba(224,49,49,0.15); color: #e03131; }
+  .status-badge.error { background: rgba(224,49,49,0.15); color: #e03131; }
+  
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+  .no-bot { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; color: var(--muted); gap: 12px; }
+  .no-bot svg { opacity: 0.3; }
+  
+  .bot-detail { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  
+  .bot-topbar { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .bot-title { font-size: 16px; font-weight: 700; color: #fff; }
+  .topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+  
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  .stat-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .stat-value { font-size: 18px; font-weight: 700; color: #fff; }
+  .stat-sub { font-size: 11px; color: var(--muted); }
+  
+  .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 20px; gap: 4px; }
+  .tab { padding: 8px 14px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); transition: color 0.15s; margin-bottom: -1px; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  
+  .tab-content { flex: 1; overflow: hidden; display: none; }
+  .tab-content.active { display: flex; flex-direction: column; overflow: hidden; }
+  
+  .panel { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  
+  .log-panel { flex: 1; overflow-y: auto; padding: 12px 16px; font-family: 'Courier New', monospace; font-size: 12px; background: #0a0c12; }
+  .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); line-height: 1.5; word-break: break-word; }
+  .log-entry .ts { color: #404867; margin-right: 8px; }
+  
+  .cmd-bar { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  
+  .inventory-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+  .inv-slot { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; padding: 4px; cursor: default; transition: border-color 0.1s; }
+  .inv-slot:hover { border-color: var(--accent); }
+  .inv-slot .count { font-weight: 700; color: #fff; }
+  .inv-slot .name { color: var(--muted); font-size: 9px; text-align: center; word-break: break-all; }
+  
+  .task-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+  .task-name { font-weight: 600; color: #fff; }
+  .task-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+  
+  .waypoint-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+  .waypoint-coords { font-family: monospace; font-size: 12px; color: var(--muted); }
+  
+  input, select, textarea { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none; width: 100%; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  
+  button { padding: 7px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+  button:hover { opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal.open { display: flex; }
+  .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 420px; max-width: 95vw; }
+  .modal-card h3 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  .health-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; margin-top: 4px; }
+  .health-fill { height: 100%; background: #37b24d; transition: width 0.5s; }
+  .food-fill { height: 100%; background: #f59f00; transition: width 0.5s; }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .form-row { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <h1>⛏ Minecraft AI Bot</h1>
+    <p>Enter your dashboard password</p>
+    <div class="form-group" style="margin-bottom:16px">
+      <input type="password" id="login-pass" placeholder="Password" />
+    </div>
+    <button class="btn-primary" style="width:100%" onclick="login()">Login</button>
+    <p id="login-error" style="color:#e03131;margin-top:12px;font-size:12px"></p>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <h1>⛏ Minecraft AI Bot Platform</h1>
+    <div class="header-right">
+      <div class="ws-status">
+        <div class="ws-dot" id="ws-dot"></div>
+        <span id="ws-label">Connecting...</span>
+      </div>
+      <button class="btn-ghost" onclick="showAddBot()">+ Add Bot</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>Bots (<span id="bot-count">0</span>)</h2>
+      </div>
+      <div class="bot-list" id="bot-list"></div>
+    </div>
+
+    <div class="main" id="main">
+      <div class="no-bot" id="no-bot">
+        <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+        <p>Select a bot or add one to get started</p>
+        <button class="btn-primary" onclick="showAddBot()">+ Add Bot</button>
+      </div>
+
+      <div class="bot-detail" id="bot-detail" style="display:none">
+        <div class="bot-topbar">
+          <div>
+            <div class="bot-title" id="detail-name">Bot</div>
+            <div id="detail-host" style="font-size:12px;color:var(--muted)"></div>
+          </div>
+          <div id="detail-status"></div>
+          <div class="topbar-actions">
+            <button class="btn-success" id="btn-connect" onclick="connectBot()">Connect</button>
+            <button class="btn-ghost" id="btn-disconnect" onclick="disconnectBot()">Disconnect</button>
+            <button class="btn-danger" onclick="removeBot()">Remove</button>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="stat-label">Health</div>
+            <div class="stat-value" id="stat-health">0</div>
+            <div class="health-bar"><div class="health-fill" id="bar-health" style="width:0%"></div></div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Food</div>
+            <div class="stat-value" id="stat-food">0</div>
+            <div class="health-bar"><div class="food-fill" id="bar-food" style="width:0%"></div></div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Position</div>
+            <div class="stat-value" id="stat-pos" style="font-size:12px;margin-top:4px">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Uptime</div>
+            <div class="stat-value" id="stat-uptime" style="font-size:14px;margin-top:4px">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Task</div>
+            <div class="stat-value" id="stat-task" style="font-size:12px;margin-top:4px">Idle</div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('logs', this)">Logs</div>
+          <div class="tab" onclick="switchTab('console', this)">Console</div>
+          <div class="tab" onclick="switchTab('inventory', this)">Inventory</div>
+          <div class="tab" onclick="switchTab('tasks', this)">Tasks</div>
+          <div class="tab" onclick="switchTab('waypoints', this)">Waypoints</div>
+          <div class="tab" onclick="switchTab('structures', this)">Structures</div>
+        </div>
+
+        <div class="tab-content active" id="tab-logs">
+          <div class="log-panel" id="log-panel"></div>
+        </div>
+
+        <div class="tab-content" id="tab-console">
+          <div class="panel" style="flex:1;display:flex;flex-direction:column;gap:12px">
+            <div style="color:var(--muted);font-size:12px">Type a command (e.g. <code>mine diamond 32</code>, <code>follow Steve</code>, <code>farm wheat</code>)</div>
+            <div id="cmd-results" style="flex:1;overflow-y:auto;font-family:monospace;font-size:12px;background:#0a0c12;border-radius:6px;padding:12px;min-height:100px"></div>
+          </div>
+          <div class="cmd-bar">
+            <input type="text" id="cmd-input" placeholder="Enter command..." onkeydown="if(event.key==='Enter')sendCommand()" />
+            <button class="btn-primary" onclick="sendCommand()">Send</button>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-inventory">
+          <div class="panel">
+            <div class="inventory-grid" id="inv-grid"></div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-tasks">
+          <div class="panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <h3 style="font-size:14px;color:var(--muted)">Task Queue</h3>
+              <button class="btn-danger" onclick="stopTasks()" style="padding:5px 12px;font-size:12px">Stop All</button>
+            </div>
+            <div id="task-list"></div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-waypoints">
+          <div class="panel">
+            <div id="waypoint-list"></div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-structures">
+          <div class="panel">
+            <div id="structure-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="add-bot-modal">
+  <div class="modal-card">
+    <h3>Add New Bot</h3>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="new-username" placeholder="BotName" value="MinecraftAI" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Server Host</label>
+        <input type="text" id="new-host" placeholder="play.example.com" />
+      </div>
+      <div class="form-group">
+        <label>Port</label>
+        <input type="number" id="new-port" placeholder="25565" value="25565" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Version</label>
+        <select id="new-version">
+          <option value="1.20.1">1.20.1</option>
+          <option value="1.20.4">1.20.4</option>
+          <option value="1.20.6">1.20.6</option>
+          <option value="1.21.1">1.21.1</option>
+          <option value="1.21.4">1.21.4</option>
+          <option value="1.19.4">1.19.4</option>
+          <option value="1.18.2">1.18.2</option>
+          <option value="1.17.1">1.17.1</option>
+          <option value="1.16.5">1.16.5</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Auth Mode</label>
+        <select id="new-auth">
+          <option value="offline">Offline</option>
+          <option value="microsoft">Microsoft</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Password (optional)</label>
+      <input type="password" id="new-password" placeholder="Leave blank for offline" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('add-bot-modal')">Cancel</button>
+      <button class="btn-primary" onclick="addBot()">Add Bot</button>
+    </div>
+  </div>
+</div>
+
+<script src="/api/socket.io/socket.io.js"></script>
+<script>
+let socket = null;
+let selectedBotId = null;
+let bots = {};
+let logBuffer = {};
+let autoScroll = true;
+
+function login() {
+  const pass = document.getElementById('login-pass').value;
+  initSocket(pass);
+}
+
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') login();
+});
+
+function initSocket(password) {
+  socket = io({ auth: { password }, path: '/api/socket.io/' });
+
+  socket.on('connect', () => {
+    setWsStatus(true);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  });
+
+  socket.on('connect_error', (err) => {
+    document.getElementById('login-error').textContent = 'Wrong password or connection error';
+    setWsStatus(false);
+  });
+
+  socket.on('disconnect', () => setWsStatus(false));
+
+  socket.on('bots:all', (data) => {
+    bots = {};
+    data.forEach(b => { bots[b.id] = b; });
+    renderBotList();
+    if (selectedBotId && bots[selectedBotId]) updateBotDetail(bots[selectedBotId]);
+  });
+
+  socket.on('bot:status', ({ id, status }) => {
+    if (bots[id]) { bots[id].status = status; renderBotList(); }
+    if (id === selectedBotId) updateStatusBadge(status);
+  });
+
+  socket.on('bot:log', ({ id, entry }) => {
+    if (!logBuffer[id]) logBuffer[id] = [];
+    logBuffer[id].push(entry);
+    if (logBuffer[id].length > 1000) logBuffer[id].shift();
+    if (id === selectedBotId) appendLog(entry);
+  });
+
+  socket.on('bot:health', ({ id, health, food }) => {
+    if (bots[id]) { bots[id].health = health; bots[id].food = food; }
+    if (id === selectedBotId) {
+      document.getElementById('stat-health').textContent = Math.round(health);
+      document.getElementById('bar-health').style.width = (health / 20 * 100) + '%';
+      document.getElementById('stat-food').textContent = Math.round(food);
+      document.getElementById('bar-food').style.width = (food / 20 * 100) + '%';
+    }
+  });
+
+  socket.on('bot:position', ({ id, pos }) => {
+    if (bots[id] && pos) bots[id].position = pos;
+    if (id === selectedBotId && pos) {
+      document.getElementById('stat-pos').textContent = `${pos.x} ${pos.y} ${pos.z}`;
+    }
+  });
+
+  socket.on('bot:inventory', ({ id, items }) => {
+    if (bots[id]) bots[id].inventory = items;
+    if (id === selectedBotId) renderInventory(items);
+  });
+
+  socket.on('bot:tasks', ({ id, tasks }) => {
+    if (id === selectedBotId) renderTasks(tasks);
+  });
+
+  socket.on('command:result', ({ botId, result }) => {
+    appendCmdResult(`> ${result}`, 'success');
+  });
+
+  socket.on('command:error', ({ error }) => {
+    appendCmdResult(`Error: ${error}`, 'error');
+  });
+
+  setInterval(() => {
+    if (selectedBotId && bots[selectedBotId]) {
+      const uptime = bots[selectedBotId].uptime || 0;
+      const now = Date.now();
+      document.getElementById('stat-uptime').textContent = formatUptime(uptime);
+    }
+    socket.emit('memory:stats');
+  }, 5000);
+}
+
+function setWsStatus(connected) {
+  document.getElementById('ws-dot').className = 'ws-dot' + (connected ? ' connected' : '');
+  document.getElementById('ws-label').textContent = connected ? 'Connected' : 'Disconnected';
+}
+
+function renderBotList() {
+  const list = document.getElementById('bot-list');
+  const botArr = Object.values(bots);
+  document.getElementById('bot-count').textContent = botArr.length;
+
+  list.innerHTML = botArr.map(b => `
+    <div class="bot-card ${b.id === selectedBotId ? 'active' : ''}" onclick="selectBot('${b.id}')">
+      <div class="bot-card-name">
+        ${escHtml(b.username)}
+        <span class="status-badge ${b.status}">${b.status}</span>
+      </div>
+      <div class="bot-card-info">${escHtml(b.host)}:${b.port} | v${b.version}</div>
+      ${b.currentTask ? `<div class="bot-card-info" style="color:var(--accent);margin-top:3px">⚡ ${escHtml(b.currentTask)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function selectBot(id) {
+  selectedBotId = id;
+  const bot = bots[id];
+  if (!bot) return;
+  renderBotList();
+  document.getElementById('no-bot').style.display = 'none';
+  document.getElementById('bot-detail').style.display = 'flex';
+  updateBotDetail(bot);
+
+  document.getElementById('log-panel').innerHTML = '';
+  (logBuffer[id] || bot.logs || []).forEach(appendLog);
+
+  fetchWaypoints();
+  fetchStructures();
+}
+
+function updateBotDetail(bot) {
+  document.getElementById('detail-name').textContent = bot.username;
+  document.getElementById('detail-host').textContent = `${bot.host}:${bot.port} | Version ${bot.version}`;
+  updateStatusBadge(bot.status);
+
+  document.getElementById('stat-health').textContent = Math.round(bot.health || 0);
+  document.getElementById('bar-health').style.width = ((bot.health || 0) / 20 * 100) + '%';
+  document.getElementById('stat-food').textContent = Math.round(bot.food || 0);
+  document.getElementById('bar-food').style.width = ((bot.food || 0) / 20 * 100) + '%';
+
+  const pos = bot.position;
+  document.getElementById('stat-pos').textContent = pos ? `${pos.x} ${pos.y} ${pos.z}` : '—';
+  document.getElementById('stat-uptime').textContent = formatUptime(bot.uptime || 0);
+  document.getElementById('stat-task').textContent = bot.currentTask || 'Idle';
+
+  renderInventory(bot.inventory || []);
+}
+
+function updateStatusBadge(status) {
+  document.getElementById('detail-status').innerHTML = `<span class="status-badge ${status}">${status}</span>`;
+}
+
+function appendLog(entry) {
+  const panel = document.getElementById('log-panel');
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  const ts = entry.substring(1, 24);
+  const msg = entry.substring(27);
+  div.innerHTML = `<span class="ts">${escHtml(ts)}</span>${escHtml(msg)}`;
+  panel.appendChild(div);
+  if (autoScroll) panel.scrollTop = panel.scrollHeight;
+  while (panel.children.length > 500) panel.removeChild(panel.firstChild);
+}
+
+function appendCmdResult(msg, type) {
+  const el = document.getElementById('cmd-results');
+  const div = document.createElement('div');
+  div.style.color = type === 'error' ? '#e03131' : '#37b24d';
+  div.style.marginBottom = '4px';
+  div.textContent = msg;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderInventory(items) {
+  const grid = document.getElementById('inv-grid');
+  const slots = Array(36).fill(null);
+  items.forEach(item => { if (item.slot < 36) slots[item.slot] = item; });
+  grid.innerHTML = slots.map((item, i) => item
+    ? `<div class="inv-slot" title="${item.name} x${item.count}">
+        <div class="count">${item.count}</div>
+        <div class="name">${item.name.replace(/_/g,' ')}</div>
+       </div>`
+    : `<div class="inv-slot" style="opacity:0.2"><div class="count" style="font-size:18px;color:var(--border)">·</div></div>`
+  ).join('');
+}
+
+function renderTasks(tasks) {
+  const list = document.getElementById('task-list');
+  if (!tasks.length) {
+    list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No active tasks</div>';
+    return;
+  }
+  list.innerHTML = tasks.map(t => `
+    <div class="task-item">
+      <div style="display:flex;justify-content:space-between">
+        <div class="task-name">${escHtml(t.name)}</div>
+        <span class="status-badge ${t.status === 'running' ? 'connected' : t.status === 'failed' ? 'error' : 'disconnected'}">${t.status}</span>
+      </div>
+      <div class="task-desc">${escHtml(t.description || '')}</div>
+      ${t.status === 'running' ? `<div class="progress-bar"><div class="progress-fill" style="width:${t.progress}%"></div></div>` : ''}
+    </div>
+  `).join('');
+  document.getElementById('stat-task').textContent = tasks.find(t => t.status === 'running')?.name || 'Idle';
+}
+
+async function fetchWaypoints() {
+  if (!selectedBotId) return;
+  const res = await fetch(`/api/bots/${selectedBotId}/waypoints`);
+  const data = await res.json();
+  const list = document.getElementById('waypoint-list');
+  if (!data.waypoints?.length) {
+    list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No waypoints saved</div>';
+    return;
+  }
+  list.innerHTML = data.waypoints.map(w => `
+    <div class="waypoint-item">
+      <div style="flex:1">
+        <div style="font-weight:600;color:#fff">${escHtml(w.name)}</div>
+        <div class="waypoint-coords">${Math.round(w.x)} ${Math.round(w.y)} ${Math.round(w.z)} | ${w.dimension || 'overworld'}</div>
+        ${w.description ? `<div style="font-size:11px;color:var(--muted)">${escHtml(w.description)}</div>` : ''}
+      </div>
+      <button class="btn-primary" style="font-size:11px;padding:4px 10px" onclick="gotoWaypoint('${w.name}')">Go</button>
+      <button class="btn-danger" style="font-size:11px;padding:4px 10px" onclick="deleteWaypoint('${w.id}')">Del</button>
+    </div>
+  `).join('');
+}
+
+async function fetchStructures() {
+  if (!selectedBotId) return;
+  const res = await fetch(`/api/bots/${selectedBotId}/structures`);
+  const data = await res.json();
+  const list = document.getElementById('structure-list');
+  if (!data.structures?.length) {
+    list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No structures discovered yet</div>';
+    return;
+  }
+  list.innerHTML = data.structures.map(s => `
+    <div class="waypoint-item">
+      <div style="flex:1">
+        <div style="font-weight:600;color:#fff">${escHtml(s.type)}</div>
+        <div class="waypoint-coords">${Math.round(s.x)} ${Math.round(s.y)} ${Math.round(s.z)}</div>
+      </div>
+      <button class="btn-primary" style="font-size:11px;padding:4px 10px" onclick="sendRawCommand('goto ${Math.round(s.x)} ${Math.round(s.y)} ${Math.round(s.z)}')">Go</button>
+    </div>
+  `).join('');
+}
+
+function sendCommand() {
+  const input = document.getElementById('cmd-input');
+  const raw = input.value.trim();
+  if (!raw || !selectedBotId) return;
+  appendCmdResult(`$ ${raw}`, 'info');
+  socket.emit('bot:command', { botId: selectedBotId, raw });
+  input.value = '';
+}
+
+function sendRawCommand(cmd) {
+  if (!selectedBotId) return;
+  socket.emit('bot:command', { botId: selectedBotId, raw: cmd });
+}
+
+function stopTasks() {
+  if (!selectedBotId) return;
+  fetch(`/api/bots/${selectedBotId}/tasks/stop`, { method: 'POST' });
+}
+
+function connectBot() {
+  if (!selectedBotId) return;
+  socket.emit('bot:connect', selectedBotId);
+}
+
+function disconnectBot() {
+  if (!selectedBotId) return;
+  socket.emit('bot:disconnect', selectedBotId);
+}
+
+function removeBot() {
+  if (!selectedBotId || !confirm('Remove this bot?')) return;
+  socket.emit('bot:remove', selectedBotId);
+  selectedBotId = null;
+  document.getElementById('bot-detail').style.display = 'none';
+  document.getElementById('no-bot').style.display = 'flex';
+}
+
+function gotoWaypoint(name) {
+  sendRawCommand(`waypoint goto ${name}`);
+}
+
+async function deleteWaypoint(id) {
+  if (!selectedBotId || !confirm('Delete waypoint?')) return;
+  await fetch(`/api/bots/${selectedBotId}/waypoints/${id}`, { method: 'DELETE' });
+  fetchWaypoints();
+}
+
+function showAddBot() {
+  document.getElementById('add-bot-modal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function addBot() {
+  const config = {
+    username: document.getElementById('new-username').value.trim(),
+    host: document.getElementById('new-host').value.trim(),
+    port: parseInt(document.getElementById('new-port').value) || 25565,
+    version: document.getElementById('new-version').value,
+    auth: document.getElementById('new-auth').value,
+    password: document.getElementById('new-password').value || undefined,
+  };
+  if (!config.username || !config.host) { alert('Username and host are required'); return; }
+  socket.emit('bot:create', config);
+  closeModal('add-bot-modal');
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+  if (name === 'waypoints') fetchWaypoints();
+  if (name === 'structures') fetchStructures();
+}
+
+function formatUptime(ms) {
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d > 0) return `${d}d ${h % 24}h`;
+  if (h > 0) return `${h}h ${m % 60}m`;
+  if (m > 0) return `${m}m ${s % 60}s`;
+  return `${s}s`;
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('cmd-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendCommand();
+});
+</script>
+</body>
+</html>

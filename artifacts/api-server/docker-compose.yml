@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  mcbot:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-admin}
+      - DATA_DIR=/app/data
+    volumes:
+      - mcbot_data:/app/data
+      - mcbot_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  mcbot_data:
+  mcbot_logs:

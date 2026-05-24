@@ -1,0 +1,438 @@
+Create a production-ready advanced Minecraft AI Bot platform using Node.js and Mineflayer.
+
+IMPORTANT:
+This project MUST be optimized for:
+- Replit
+- Render
+- Railway
+- VPS hosting
+- Docker deployment
+- 24/7 cloud hosting
+
+The bot must run reliably without crashes, sleeping issues, memory leaks, or websocket disconnect problems.
+
+==================================================
+MINECRAFT VERSION SUPPORT
+==================================================
+
+The bot MUST support MULTIPLE Minecraft Java versions.
+
+Required support:
+- 1.16.x
+- 1.17.x
+- 1.18.x
+- 1.19.x
+- 1.20.x
+- latest stable Minecraft Java version
+
+The system must:
+- automatically detect server version
+- load correct protocol automatically
+- support version switching
+- support ViaVersion servers
+- prevent version mismatch crashes
+
+Use:
+- minecraft-protocol
+- prismarine-registry
+- prismarine-data
+- version abstraction system
+
+Create a version compatibility layer so all features work correctly across different Minecraft versions.
+
+==================================================
+CORE STACK
+==================================================
+
+Use:
+- Node.js LTS
+- Express.js
+- Socket.io
+- Mineflayer ecosystem
+- Environment variables
+- Docker support
+- Persistent storage
+- Reconnect system
+- Logging system
+
+==================================================
+DEPLOYMENT STABILITY REQUIREMENTS
+==================================================
+
+1. Auto Reconnect
+- reconnect after server kick
+- reconnect after internet loss
+- reconnect after Minecraft timeout
+- reconnect after crash
+- reconnect after Render restart
+
+Add smart retry delays.
+
+--------------------------------------------------
+
+2. Memory Optimization
+- avoid RAM leaks
+- unload unused pathfinding data
+- clear old tasks
+- optimize chunk processing
+- optimize inventory scanning
+- low CPU usage mode
+
+Must work properly on:
+- 512MB RAM
+- 1GB RAM
+- 2GB RAM VPS
+
+--------------------------------------------------
+
+3. Render Compatibility
+
+The project MUST:
+- use process.env.PORT
+- expose Express server correctly
+- prevent Render service sleeping
+- support websocket connections
+- support background tasks
+- avoid localhost-only binding
+- use 0.0.0.0 binding
+
+Example:
+
+app.listen(process.env.PORT || 3000, "0.0.0.0")
+
+--------------------------------------------------
+
+4. Docker Support
+
+Generate:
+- Dockerfile
+- docker-compose.yml
+
+Must support:
+- docker build
+- docker run
+
+--------------------------------------------------
+
+5. Persistent Storage
+
+The bot MUST save:
+- discovered structures
+- inventory
+- task history
+- waypoints
+- mining progress
+- unfinished builds
+- player settings
+
+Use:
+- SQLite initially
+- modular database layer
+
+--------------------------------------------------
+
+6. Crash Recovery System
+
+If the bot crashes:
+- restore previous tasks
+- reconnect automatically
+- continue unfinished mining/building
+- restore waypoints
+- restore inventory tracking
+
+--------------------------------------------------
+
+7. Anti-Lag System
+
+The bot must:
+- reduce chunk loading
+- pause unnecessary scans
+- limit path recalculations
+- optimize entity checks
+- use async task queues
+
+==================================================
+ADVANCED AI FEATURES
+==================================================
+
+MINING AI
+- intelligent ore detection
+- exact quantity mining
+- cave exploration
+- auto torch placement
+- lava avoidance
+- automatic tool crafting
+
+Supported ores:
+- coal
+- iron
+- gold
+- redstone
+- lapis
+- emerald
+- diamond
+- netherite debris
+- quartz
+
+Example:
+mine diamond 64
+
+The bot must:
+1. Find diamonds
+2. Mine exactly 64
+3. Avoid danger
+4. Return safely
+
+--------------------------------------------------
+
+BUILDING AI
+- blueprint system
+- terrain adaptation
+- automatic material gathering
+- unfinished build recovery
+
+Structures:
+- houses
+- farms
+- storage rooms
+- bridges
+- towers
+- walls
+
+--------------------------------------------------
+
+FARMING AI
+- crop farming
+- animal farming
+- auto storage
+- food management
+
+Supported crops:
+- wheat
+- carrots
+- potatoes
+- bamboo
+- sugarcane
+- melons
+- pumpkins
+
+Animals:
+- cows
+- sheep
+- pigs
+- chickens
+
+--------------------------------------------------
+
+EXPLORATION AI
+- structure detection
+- biome detection
+- waypoint saving
+- infinite exploration
+
+Supported structures:
+- villages
+- strongholds
+- temples
+- woodland mansions
+- ancient cities
+- mineshafts
+- ocean monuments
+
+Supported biomes:
+- plains
+- desert
+- jungle
+- swamp
+- snowy
+- badlands
+- cherry grove
+
+--------------------------------------------------
+
+COMBAT AI
+- PVP
+- shield usage
+- bow usage
+- danger escape system
+- mob fighting
+- player protection
+
+==================================================
+FULL BARITONE-LIKE FEATURES
+==================================================
+
+Implement:
+- advanced pathfinding
+- auto sprint
+- parkour
+- block placement
+- bridge building
+- obstacle avoidance
+- safe navigation
+- intelligent recovery
+- cave navigation
+
+==================================================
+SMART COMMAND SYSTEM
+==================================================
+
+The bot must understand commands from:
+- Minecraft chat
+- Web dashboard
+- Console
+
+Examples:
+- follow me
+- stop
+- mine diamonds 32
+- collect wood 64
+- craft iron_pickaxe
+- build house
+- farm wheat
+- explore biome
+- find village
+- attack mobs
+- defend player
+- deposit items
+- organize inventory
+
+==================================================
+INVENTORY MANAGEMENT
+==================================================
+
+The bot must:
+- organize inventory automatically
+- stack items
+- throw useless items
+- manage tools
+- manage armor
+- store loot in chests
+- withdraw required items
+- manage food automatically
+
+==================================================
+CONTROL PANEL
+==================================================
+
+Create modern responsive dashboard using:
+- Express
+- Socket.io
+- Vanilla JS or React
+
+Dashboard must include:
+- live bot status
+- inventory viewer
+- health display
+- hunger display
+- live logs
+- command console
+- task queue
+- waypoint manager
+- reconnect controls
+- server selector
+- version selector
+
+Must work on:
+- mobile
+- desktop
+
+==================================================
+MULTI-BOT SUPPORT
+==================================================
+
+Support:
+- multiple bots
+- multiple servers
+- synchronized tasks
+- independent task queues
+
+==================================================
+PLUGIN SYSTEM
+==================================================
+
+Create modular plugin architecture:
+- mining plugin
+- farming plugin
+- combat plugin
+- building plugin
+- exploration plugin
+
+Easy to extend later.
+
+==================================================
+MULTI-PLATFORM HOSTING SUPPORT
+==================================================
+
+The project MUST support:
+- Replit
+- Render
+- Railway
+- Ubuntu VPS
+- Oracle Cloud
+- Docker
+- PM2
+
+Generate:
+- ecosystem.config.js for PM2
+
+==================================================
+SECURITY
+==================================================
+
+Add:
+- password protected dashboard
+- environment variable configs
+- rate limiting
+- safe websocket handling
+
+==================================================
+PROJECT STRUCTURE
+==================================================
+
+Generate clean scalable structure:
+
+src/
+plugins/
+ai/
+tasks/
+pathfinding/
+database/
+web/
+config/
+utils/
+logs/
+
+==================================================
+REQUIRED FILES
+==================================================
+
+Generate:
+- package.json
+- .env.example
+- Dockerfile
+- docker-compose.yml
+- render.yaml
+- ecosystem.config.js
+- README.md
+- setup guide
+
+==================================================
+FINAL GOAL
+==================================================
+
+The final bot must behave like a smart autonomous Minecraft survival AI assistant that can:
+- mine
+- build
+- farm
+- explore
+- fight
+- craft
+- organize inventory
+- detect structures
+- detect biomes
+- follow player commands
+- survive independently
+- run 24/7 on cloud hosting
+
+The project must be modular, scalable, optimized, and production-ready.

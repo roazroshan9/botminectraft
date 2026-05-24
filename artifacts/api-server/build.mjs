@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp, mkdir } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -30,7 +30,9 @@ async function buildAll() {
     external: [
       "*.node",
       "sharp",
-      "better-sqlite3",
+      "mineflayer",
+      "mineflayer-pathfinder",
+      "socket.io",
       "sqlite3",
       "canvas",
       "bcrypt",
@@ -120,7 +122,24 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
-buildAll().catch((err) => {
+async function copyWebAssets() {
+  const webSrc = path.resolve(artifactDir, "src/web");
+  const webDst = path.resolve(artifactDir, "dist/web");
+  try {
+    await mkdir(webDst, { recursive: true });
+    await cp(webSrc, webDst, { recursive: true });
+    console.log("Copied web assets to dist/web");
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+}
+
+async function main() {
+  await buildAll();
+  await copyWebAssets();
+}
+
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: minecraft-ai-bot
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm run build
+    startCommand: node --enable-source-maps ./dist/index.mjs
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: DASHBOARD_PASSWORD
+        generateValue: true
+      - key: DATA_DIR
+        value: /opt/render/project/src/data
+    disk:
+      name: mcbot-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    healthCheckPath: /api/health
