@@ -169,6 +169,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      bcryptjs:
+        specifier: ^3.0.3
+        version: 3.0.3
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -184,6 +187,9 @@ importers:
       express-rate-limit:
         specifier: ^8.5.2
         version: 8.5.2(express@5.2.1)
+      jsonwebtoken:
+        specifier: ^9.0.3
+        version: 9.0.3
       mineflayer:
         specifier: ^4.37.1
         version: 4.37.1
@@ -203,6 +209,9 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
     devDependencies:
+      '@types/bcryptjs':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -215,6 +224,9 @@ importers:
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
@@ -1451,6 +1463,10 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
+  '@types/bcryptjs@3.0.0':
+    resolution: {integrity: sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg==}
+    deprecated: This is a stub types definition. bcryptjs provides its own type definitions, so you do not need this installed.
+
   '@types/better-sqlite3@7.6.13':
     resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
@@ -1509,6 +1525,12 @@ packages:
 
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
+
+  '@types/jsonwebtoken@9.0.10':
+    resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
+
+  '@types/ms@2.1.0':
+    resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
   '@types/node-rsa@1.1.4':
     resolution: {integrity: sha512-dB0ECel6JpMnq5ULvpUTunx3yNm8e/dIkv8Zu9p2c8me70xIRUUG3q+qXRwcSf9rN3oqamv4116iHy90dJGRpA==}
@@ -1631,6 +1653,10 @@ packages:
   baseline-browser-mapping@2.10.28:
     resolution: {integrity: sha512-Ic44hnOtFIgravCunj1ifSoQPSUrkNiJuH9Mf6jr2jjoA74icqV8wU0KuadXeOR8zuIJMOoTv0GuQjZ9ZYNMeA==}
     engines: {node: '>=6.0.0'}
+    hasBin: true
+
+  bcryptjs@3.0.3:
+    resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
     hasBin: true
 
   body-parser@2.2.2:
@@ -4456,6 +4482,10 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.0
 
+  '@types/bcryptjs@3.0.0':
+    dependencies:
+      bcryptjs: 3.0.3
+
   '@types/better-sqlite3@7.6.13':
     dependencies:
       '@types/node': 25.6.2
@@ -4521,6 +4551,13 @@ snapshots:
       '@types/unist': 3.0.3
 
   '@types/http-errors@2.0.5': {}
+
+  '@types/jsonwebtoken@9.0.10':
+    dependencies:
+      '@types/ms': 2.1.0
+      '@types/node': 25.6.2
+
+  '@types/ms@2.1.0': {}
 
   '@types/node-rsa@1.1.4':
     dependencies:
@@ -4642,6 +4679,8 @@ snapshots:
   base64id@2.0.0: {}
 
   baseline-browser-mapping@2.10.28: {}
+
+  bcryptjs@3.0.3: {}
 
   body-parser@2.2.2:
     dependencies:
@@ -5357,7 +5396,7 @@ snapshots:
   mineflayer-pathfinder@2.4.5:
     dependencies:
       minecraft-data: 3.110.2
-      prismarine-block: 1.23.0
+      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
       prismarine-entity: 2.6.0
       prismarine-item: 1.18.0
       prismarine-nbt: 2.8.0
@@ -5372,7 +5411,7 @@ snapshots:
       minecraft-protocol: 1.66.2
       mojangson: 2.0.4
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
-      prismarine-block: 1.23.0
+      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
       prismarine-chat: 1.13.0
       prismarine-chunk: 1.40.0
       prismarine-entity: 2.6.0
@@ -5642,7 +5681,7 @@ snapshots:
     dependencies:
       prismarine-registry: 1.12.0
 
-  prismarine-block@1.23.0:
+  prismarine-block@1.23.0(prismarine-registry@1.12.0):
     dependencies:
       minecraft-data: 3.110.2
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
@@ -5651,6 +5690,7 @@ snapshots:
       prismarine-nbt: 2.8.0
       prismarine-registry: 1.12.0
     transitivePeerDependencies:
+      - prismarine-registry
       - supports-color
 
   prismarine-chat@1.13.0:
@@ -5665,7 +5705,7 @@ snapshots:
   prismarine-chunk@1.40.0:
     dependencies:
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
-      prismarine-block: 1.23.0
+      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
       prismarine-nbt: 2.8.0
       prismarine-registry: 1.12.0
       smart-buffer: 4.2.0
@@ -5714,7 +5754,7 @@ snapshots:
   prismarine-registry@1.12.0:
     dependencies:
       minecraft-data: 3.110.2
-      prismarine-block: 1.23.0
+      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
       prismarine-nbt: 2.8.0
     transitivePeerDependencies:
       - supports-color

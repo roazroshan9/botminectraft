@@ -16,6 +16,12 @@ export function initDatabase(): DatabaseSync {
   db = new DatabaseSync(DB_PATH);
 
   db.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA foreign_keys = ON;
+
+    -- ═══════════════════════════════════════════
+    -- LEGACY TABLES (kept for backward compat)
+    -- ═══════════════════════════════════════════
     CREATE TABLE IF NOT EXISTS bots (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL,
@@ -76,9 +82,72 @@ export function initDatabase(): DatabaseSync {
       value TEXT NOT NULL,
       updated_at INTEGER DEFAULT (unixepoch())
     );
+
+    -- ═══════════════════════════════════════════
+    -- SAAS TABLES
+    -- ═══════════════════════════════════════════
+
+    CREATE TABLE IF NOT EXISTS users (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      username      TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+      email         TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+      password_hash TEXT    NOT NULL,
+      tier          TEXT    NOT NULL DEFAULT 'free',
+      is_active     INTEGER NOT NULL DEFAULT 1,
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS payments (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amount         REAL    NOT NULL,
+      currency       TEXT    NOT NULL DEFAULT 'USD',
+      status         TEXT    NOT NULL DEFAULT 'pending',
+      transaction_id TEXT,
+      tier_granted   TEXT    NOT NULL,
+      timestamp      TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS user_bots (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      bot_name       TEXT    NOT NULL,
+      server_ip      TEXT    NOT NULL,
+      server_port    INTEGER NOT NULL DEFAULT 25565,
+      mc_version     TEXT    NOT NULL DEFAULT 'auto',
+      auth_type      TEXT    NOT NULL DEFAULT 'offline',
+      auth_data_json TEXT,
+      status         TEXT    NOT NULL DEFAULT 'offline',
+      current_task   TEXT,
+      runtime_id     TEXT,
+      created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS live_logs (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      bot_id     INTEGER NOT NULL REFERENCES user_bots(id) ON DELETE CASCADE,
+      log_type   TEXT    NOT NULL DEFAULT 'info',
+      message    TEXT    NOT NULL,
+      timestamp  TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      sender    TEXT    NOT NULL DEFAULT 'user',
+      message   TEXT    NOT NULL,
+      is_read   INTEGER NOT NULL DEFAULT 0,
+      timestamp TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_user_bots_user_id   ON user_bots(user_id);
+    CREATE INDEX IF NOT EXISTS idx_live_logs_bot_id    ON live_logs(bot_id);
+    CREATE INDEX IF NOT EXISTS idx_support_user_id     ON support_messages(user_id);
+    CREATE INDEX IF NOT EXISTS idx_payments_user_id    ON payments(user_id);
   `);
 
-  logger.info({ path: DB_PATH }, "Database initialized");
+  logger.info({ path: DB_PATH }, "Database initialized (SaaS schema v2)");
   return db;
 }
 
@@ -86,6 +155,8 @@ export function getDatabase(): DatabaseSync {
   if (!db) initDatabase();
   return db;
 }
+
+// ─── Legacy Repos ───────────────────────────────────────────────────────────
 
 export const BotRepo = {
   getAll() {
@@ -164,5 +235,193 @@ export const InventoryRepo = {
   getLatest(botId: string) {
     const row = getDatabase().prepare("SELECT snapshot FROM inventory_snapshots WHERE bot_id = ? ORDER BY created_at DESC LIMIT 1").get(botId) as { snapshot: string } | undefined;
     return row ? JSON.parse(row.snapshot) : [];
+  },
+};
+
+// ─── SaaS Repos ─────────────────────────────────────────────────────────────
+
+type UserRow = {
+  id: number;
+  username: string;
+  email: string;
+  password_hash: string;
+  tier: string;
+  is_active: number;
+  created_at: string;
+};
+
+export const UserRepo = {
+  getById(id: number): UserRow | undefined {
+    return getDatabase().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+  },
+  getByEmail(email: string): UserRow | undefined {
+    return getDatabase().prepare("SELECT * FROM users WHERE email = ? COLLATE NOCASE").get(email) as UserRow | undefined;
+  },
+  getByUsername(username: string): UserRow | undefined {
+    return getDatabase().prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(username) as UserRow | undefined;
+  },
+  getAll(): UserRow[] {
+    return getDatabase().prepare("SELECT id, username, email, tier, is_active, created_at FROM users ORDER BY created_at DESC").all() as UserRow[];
+  },
+  create(data: { username: string; email: string; passwordHash: string }): UserRow {
+    const db = getDatabase();
+    db.prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)")
+      .run(data.username, data.email, data.passwordHash);
+    return db.prepare("SELECT * FROM users WHERE email = ?").get(data.email) as UserRow;
+  },
+  setTier(id: number, tier: string) {
+    getDatabase().prepare("UPDATE users SET tier = ? WHERE id = ?").run(tier, id);
+  },
+  setActive(id: number, active: boolean) {
+    getDatabase().prepare("UPDATE users SET is_active = ? WHERE id = ?").run(active ? 1 : 0, id);
+  },
+  count(): number {
+    return (getDatabase().prepare("SELECT COUNT(*) as c FROM users").get() as { c: number }).c;
+  },
+};
+
+type PaymentRow = {
+  id: number;
+  user_id: number;
+  amount: number;
+  currency: string;
+  status: string;
+  transaction_id: string | null;
+  tier_granted: string;
+  timestamp: string;
+};
+
+export const PaymentRepo = {
+  getByUser(userId: number): PaymentRow[] {
+    return getDatabase().prepare("SELECT * FROM payments WHERE user_id = ? ORDER BY timestamp DESC").all(userId) as PaymentRow[];
+  },
+  create(data: { userId: number; amount: number; tierGranted: string; transactionId?: string; status?: string }): PaymentRow {
+    const db = getDatabase();
+    db.prepare(
+      "INSERT INTO payments (user_id, amount, tier_granted, transaction_id, status) VALUES (?, ?, ?, ?, ?)"
+    ).run(data.userId, data.amount, data.tierGranted, data.transactionId ?? null, data.status ?? "pending");
+    return db.prepare("SELECT * FROM payments WHERE user_id = ? ORDER BY id DESC LIMIT 1").get(data.userId) as PaymentRow;
+  },
+  updateStatus(id: number, status: string, transactionId?: string) {
+    getDatabase().prepare("UPDATE payments SET status = ?, transaction_id = COALESCE(?, transaction_id) WHERE id = ?")
+      .run(status, transactionId ?? null, id);
+  },
+};
+
+type UserBotRow = {
+  id: number;
+  user_id: number;
+  bot_name: string;
+  server_ip: string;
+  server_port: number;
+  mc_version: string;
+  auth_type: string;
+  auth_data_json: string | null;
+  status: string;
+  current_task: string | null;
+  runtime_id: string | null;
+  created_at: string;
+};
+
+export const UserBotRepo = {
+  getByUser(userId: number): UserBotRow[] {
+    return getDatabase().prepare(
+      "SELECT * FROM user_bots WHERE user_id = ? AND status != 'deleted' ORDER BY created_at DESC"
+    ).all(userId) as UserBotRow[];
+  },
+  getById(id: number): UserBotRow | undefined {
+    return getDatabase().prepare("SELECT * FROM user_bots WHERE id = ?").get(id) as UserBotRow | undefined;
+  },
+  getAll(): UserBotRow[] {
+    return getDatabase().prepare(
+      "SELECT ub.*, u.username FROM user_bots ub JOIN users u ON ub.user_id = u.id WHERE ub.status != 'deleted' ORDER BY ub.created_at DESC"
+    ).all() as UserBotRow[];
+  },
+  create(data: { userId: number; botName: string; serverIp: string; serverPort?: number; mcVersion?: string; authType?: string }): UserBotRow {
+    const db = getDatabase();
+    db.prepare(
+      "INSERT INTO user_bots (user_id, bot_name, server_ip, server_port, mc_version, auth_type) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(data.userId, data.botName, data.serverIp, data.serverPort ?? 25565, data.mcVersion ?? "auto", data.authType ?? "offline");
+    return db.prepare("SELECT * FROM user_bots WHERE user_id = ? ORDER BY id DESC LIMIT 1").get(data.userId) as UserBotRow;
+  },
+  updateStatus(id: number, status: string, currentTask?: string | null, runtimeId?: string | null) {
+    getDatabase().prepare("UPDATE user_bots SET status = ?, current_task = ?, runtime_id = ? WHERE id = ?")
+      .run(status, currentTask ?? null, runtimeId ?? null, id);
+  },
+  saveAuthData(id: number, authDataJson: string) {
+    getDatabase().prepare("UPDATE user_bots SET auth_data_json = ? WHERE id = ?").run(authDataJson, id);
+  },
+  delete(id: number) {
+    getDatabase().prepare("UPDATE user_bots SET status = 'deleted' WHERE id = ?").run(id);
+  },
+  countByUser(userId: number): number {
+    return (getDatabase().prepare(
+      "SELECT COUNT(*) as c FROM user_bots WHERE user_id = ? AND status != 'deleted'"
+    ).get(userId) as { c: number }).c;
+  },
+};
+
+type LiveLogRow = {
+  id: number;
+  bot_id: number;
+  log_type: string;
+  message: string;
+  timestamp: string;
+};
+
+export const LiveLogRepo = {
+  getByBot(botId: number, limit = 100): LiveLogRow[] {
+    return getDatabase().prepare(
+      "SELECT * FROM live_logs WHERE bot_id = ? ORDER BY id DESC LIMIT ?"
+    ).all(botId, limit) as LiveLogRow[];
+  },
+  insert(botId: number, message: string, logType = "info") {
+    const db = getDatabase();
+    db.prepare("INSERT INTO live_logs (bot_id, log_type, message) VALUES (?, ?, ?)").run(botId, logType, message);
+    const old = db.prepare(
+      "SELECT id FROM live_logs WHERE bot_id = ? ORDER BY id DESC LIMIT -1 OFFSET 5000"
+    ).all(botId) as { id: number }[];
+    if (old.length) {
+      db.prepare(`DELETE FROM live_logs WHERE id IN (${old.map(() => "?").join(",")})`).run(...old.map(r => r.id));
+    }
+  },
+};
+
+type SupportMessageRow = {
+  id: number;
+  user_id: number;
+  sender: string;
+  message: string;
+  is_read: number;
+  timestamp: string;
+};
+
+export const SupportRepo = {
+  getThreadsByUser(userId: number): SupportMessageRow[] {
+    return getDatabase().prepare(
+      "SELECT * FROM support_messages WHERE user_id = ? ORDER BY timestamp ASC"
+    ).all(userId) as SupportMessageRow[];
+  },
+  getAllThreads() {
+    return getDatabase().prepare(`
+      SELECT sm.*, u.username FROM support_messages sm
+      JOIN users u ON sm.user_id = u.id
+      ORDER BY sm.timestamp DESC
+    `).all() as (SupportMessageRow & { username: string })[];
+  },
+  getUnreadCount(): number {
+    return (getDatabase().prepare(
+      "SELECT COUNT(*) as c FROM support_messages WHERE sender = 'user' AND is_read = 0"
+    ).get() as { c: number }).c;
+  },
+  insert(userId: number, message: string, sender: "user" | "admin"): SupportMessageRow {
+    const db = getDatabase();
+    db.prepare("INSERT INTO support_messages (user_id, sender, message) VALUES (?, ?, ?)").run(userId, sender, message);
+    return db.prepare("SELECT * FROM support_messages WHERE user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as SupportMessageRow;
+  },
+  markRead(userId: number) {
+    getDatabase().prepare(
+      "UPDATE support_messages SET is_read = 1 WHERE user_id = ? AND sender = 'user'"
+    ).run(userId);
   },
 };
