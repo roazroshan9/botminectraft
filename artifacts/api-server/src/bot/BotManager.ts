@@ -1,12 +1,14 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { MinecraftBot } from "./MinecraftBot.js";
-import { BotRepo } from "../database/Database.js";
+import { BotRepo, UserBotRepo } from "../database/Database.js";
 import { logger } from "../lib/logger.js";
 import type { BotConfig } from "../config/defaults.js";
 
 export class BotManager extends EventEmitter {
   private bots: Map<string, MinecraftBot> = new Map();
+  private botOwners: Map<string, number> = new Map();
+  private botDbIds: Map<string, number> = new Map();
   private static instance: BotManager;
 
   static getInstance(): BotManager {
@@ -64,6 +66,40 @@ export class BotManager extends EventEmitter {
     return bot;
   }
 
+  addUserBot(userId: number, dbBotId: number, config: BotConfig & { autoConnect?: boolean }): MinecraftBot {
+    const runtimeId = randomUUID();
+
+    UserBotRepo.updateStatus(dbBotId, "connecting", null, runtimeId);
+
+    const bot = this.createBot(runtimeId, config);
+    this.botOwners.set(runtimeId, userId);
+    this.botDbIds.set(runtimeId, dbBotId);
+
+    bot.on("status", (status: string) => {
+      UserBotRepo.updateStatus(dbBotId, status, bot.taskQueue.getCurrent()?.name ?? null, runtimeId);
+    });
+
+    if (config.autoConnect !== false) {
+      bot.connect().catch(err => logger.error({ err, botId: runtimeId }, "User bot connect failed"));
+    }
+    return bot;
+  }
+
+  getUserBotRuntimeId(dbBotId: number): string | undefined {
+    for (const [runtimeId, id] of this.botDbIds.entries()) {
+      if (id === dbBotId) return runtimeId;
+    }
+    return undefined;
+  }
+
+  getBotOwner(runtimeId: string): number | undefined {
+    return this.botOwners.get(runtimeId);
+  }
+
+  getBotDbId(runtimeId: string): number | undefined {
+    return this.botDbIds.get(runtimeId);
+  }
+
   private createBot(id: string, config: BotConfig): MinecraftBot {
     const bot = new MinecraftBot(id, config);
 
@@ -88,6 +124,11 @@ export class BotManager extends EventEmitter {
     bot.on("tasks", (tasks) => {
       this.emit("bot:tasks", { id, tasks });
     });
+    bot.on("auth_code", (data: { url: string; code: string; expiresIn: number }) => {
+      const userId = this.botOwners.get(id);
+      this.emit("bot:auth_code", { id, userId, ...data });
+      logger.info({ botId: id, userId }, "Microsoft auth code event emitted");
+    });
 
     this.bots.set(id, bot);
     this.emit("bot:added", { id });
@@ -100,6 +141,12 @@ export class BotManager extends EventEmitter {
     if (!bot) return false;
     bot.disconnect(true);
     this.bots.delete(id);
+    const dbId = this.botDbIds.get(id);
+    if (dbId) {
+      UserBotRepo.updateStatus(dbId, "offline", null, null);
+      this.botDbIds.delete(id);
+    }
+    this.botOwners.delete(id);
     if (permanent) {
       BotRepo.delete(id);
     }

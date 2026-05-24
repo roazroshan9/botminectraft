@@ -109,6 +109,14 @@ io.on("connection", (socket) => {
   const manager = BotManager.getInstance();
   const role = socket.data["role"] as string;
   const isAdmin = role === "admin";
+  const userData = socket.data["user"] as { userId: number; username: string } | undefined;
+
+  // Join user-specific room so auth_code events route correctly
+  if (userData?.userId) {
+    const roomName = `user:${userData.userId}`;
+    socket.join(roomName);
+    logger.info({ socketId: socket.id, room: roomName }, "Socket joined user room");
+  }
 
   socket.emit("bots:all", manager.getAllStats());
 
@@ -119,6 +127,26 @@ io.on("connection", (socket) => {
         ? await manager.getBot(data.botId)?.executeCommand(data.raw.split(" ")[0]!, data.raw.split(" ").slice(1), undefined)
         : await manager.sendCommand(data.botId, data.command!, data.args, data.amount);
       socket.emit("command:result", { botId: data.botId, result });
+    } catch (err) {
+      socket.emit("command:error", { error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // User-scoped command (any authenticated user, for their own bots)
+  socket.on("user:bot:command", async (data: { runtimeId: string; raw?: string; command?: string; args?: string[]; amount?: number }) => {
+    if (!userData) { socket.emit("command:error", { error: "Not authenticated" }); return; }
+    const bot = manager.getBot(data.runtimeId);
+    if (!bot) { socket.emit("command:error", { error: "Bot not found or not running" }); return; }
+    const ownerUserId = manager.getBotOwner(data.runtimeId);
+    if (ownerUserId !== undefined && ownerUserId !== userData.userId) {
+      socket.emit("command:error", { error: "Access denied" });
+      return;
+    }
+    try {
+      const result = data.raw
+        ? await bot.executeCommand(data.raw.split(" ")[0]!, data.raw.split(" ").slice(1), undefined)
+        : await manager.sendCommand(data.runtimeId, data.command!, data.args, data.amount);
+      socket.emit("command:result", { botId: data.runtimeId, result });
     } catch (err) {
       socket.emit("command:error", { error: err instanceof Error ? err.message : String(err) });
     }
@@ -168,6 +196,17 @@ manager.on("bot:inventory", (data) => io.emit("bot:inventory", data));
 manager.on("bot:tasks",     (data) => io.emit("bot:tasks", data));
 manager.on("bot:added",     ()     => io.emit("bots:all", manager.getAllStats()));
 manager.on("bot:removed",   ()     => io.emit("bots:all", manager.getAllStats()));
+
+// Stream auth_code events to the owning user's private Socket.io room
+manager.on("bot:auth_code", (data: { id: string; userId?: number; url: string; code: string; expiresIn: number }) => {
+  if (data.userId) {
+    io.to(`user:${data.userId}`).emit("bot:auth_code", data);
+    logger.info({ botId: data.id, userId: data.userId }, "Streamed auth_code to user room");
+  } else {
+    // Admin-managed bot — broadcast to all admin sockets
+    io.emit("bot:auth_code", data);
+  }
+});
 
 export { httpServer as default };
 export { app };

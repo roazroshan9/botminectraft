@@ -96,7 +96,15 @@ export class MinecraftBot extends EventEmitter {
         checkTimeoutInterval: 30000,
         closeTimeout: 10000,
         physicsEnabled: true,
-      });
+        onMsaCode: (data: { user_code: string; verification_uri: string; expires_in: number }) => {
+          this.log(`Microsoft auth required — visit ${data.verification_uri} and enter code: ${data.user_code}`);
+          this.emit("auth_code", {
+            url: data.verification_uri,
+            code: data.user_code,
+            expiresIn: data.expires_in,
+          });
+        },
+      } as Parameters<typeof mineflayer.createBot>[0]);
 
       this.bot.loadPlugin(pathfinder);
       this.setupPlugins();

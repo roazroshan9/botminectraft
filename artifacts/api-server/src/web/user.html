@@ -3,236 +3,903 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MC Bot — Live Status</title>
+<title>CraftBot — My Panel</title>
 <style>
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3352;
-    --accent: #5c7cfa;
-    --green: #37b24d;
-    --red: #e03131;
-    --warn: #f59f00;
-    --text: #c9d1d9;
-    --muted: #6e7681;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+:root {
+  --bg: #0a0c14;
+  --surface: #12151f;
+  --surface2: #1a1e2e;
+  --surface3: #22263a;
+  --border: #2a3050;
+  --accent: #5c7cfa;
+  --accent2: #7950f2;
+  --green: #37b24d;
+  --red: #e03131;
+  --warn: #f59f00;
+  --ms-blue: #0078d4;
+  --text: #c9d1d9;
+  --muted: #6e7691;
+  --white: #fff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
 
-  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
-  header h1 { font-size: 18px; font-weight: 700; color: #fff; }
-  .ws-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: inline-block; margin-right: 6px; transition: background 0.3s; }
-  .ws-dot.on { background: var(--green); }
-  .readonly-badge { font-size: 11px; background: rgba(92,124,250,0.15); color: var(--accent); border: 1px solid rgba(92,124,250,0.3); padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+/* ── Auth Gate ── */
+#auth-gate {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.auth-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 40px 36px; width: 100%; max-width: 400px;
+}
+.auth-logo { font-size: 28px; font-weight: 900; color: var(--white); margin-bottom: 6px; }
+.auth-sub { color: var(--muted); margin-bottom: 28px; font-size: 13px; }
+.auth-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: 8px; padding: 4px; margin-bottom: 24px; }
+.auth-tab {
+  flex: 1; padding: 8px; border: none; background: transparent; color: var(--muted);
+  font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.auth-tab.active { background: var(--accent); color: #fff; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+.field input {
+  width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--white); font-size: 14px; outline: none; transition: border-color 0.2s;
+}
+.field input:focus { border-color: var(--accent); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer; border: 1px solid transparent; transition: all 0.15s; text-decoration: none;
+}
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); width: 100%; }
+.btn-primary:hover { opacity: 0.87; }
+.btn-secondary { background: var(--surface2); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger { background: rgba(224,49,49,0.1); color: var(--red); border-color: rgba(224,49,49,0.3); }
+.btn-danger:hover { background: rgba(224,49,49,0.18); }
+.btn-ms { background: var(--ms-blue); color: #fff; border-color: var(--ms-blue); }
+.btn-ms:hover { opacity: 0.87; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-icon { padding: 6px 10px; }
+.auth-err { color: var(--red); font-size: 12px; margin-top: 10px; min-height: 18px; }
 
-  .container { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+/* ── App Shell ── */
+#app { display: none; flex-direction: column; min-height: 100vh; }
+header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 24px; height: 56px; display: flex; align-items: center;
+  justify-content: space-between; position: sticky; top: 0; z-index: 40;
+}
+.logo { font-size: 17px; font-weight: 900; color: var(--white); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.ws-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); display: inline-block; transition: background 0.3s; }
+.ws-dot.on { background: var(--green); }
+.user-chip {
+  display: flex; align-items: center; gap: 7px; padding: 5px 12px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; font-size: 12px;
+}
+.user-chip .uname { font-weight: 700; color: var(--white); }
+.tier-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 10px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.tier-free { background: rgba(110,118,145,0.15); color: var(--muted); border: 1px solid var(--border); }
+.tier-premium { background: rgba(245,159,0,0.12); color: var(--warn); border: 1px solid rgba(245,159,0,0.3); }
+.tier-enterprise { background: rgba(92,124,250,0.12); color: var(--accent); border: 1px solid rgba(92,124,250,0.3); }
 
-  .bot-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
-  .bot-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-  .bot-name { font-weight: 700; color: #fff; font-size: 18px; }
-  .badge { font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-  .badge.connected { background: rgba(55,178,77,0.15); color: var(--green); border: 1px solid rgba(55,178,77,0.3); }
-  .badge.disconnected, .badge.error { background: rgba(224,49,49,0.15); color: var(--red); border: 1px solid rgba(224,49,49,0.3); }
-  .badge.connecting { background: rgba(245,159,0,0.15); color: var(--warn); border: 1px solid rgba(245,159,0,0.3); }
+.container { max-width: 1060px; margin: 0 auto; padding: 28px 20px; flex: 1; }
 
-  .server-info { font-size: 12px; color: var(--muted); margin-bottom: 16px; margin-top: 2px; }
+/* ── Summary Bar ── */
+.summary-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+.sum-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+.sum-val { font-size: 26px; font-weight: 800; color: var(--white); }
+.sum-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
+.sum-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
-  .stat { background: var(--surface2); border-radius: 8px; padding: 12px; text-align: center; }
-  .stat-val { font-size: 22px; font-weight: 700; color: #fff; }
-  .stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
-  .bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 6px; }
-  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
-  .bar-green { background: var(--green); }
-  .bar-warn { background: var(--warn); }
+/* ── Section header ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title { font-size: 16px; font-weight: 700; color: var(--white); }
 
-  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+/* ── Bot Cards ── */
+.bot-list { display: flex; flex-direction: column; gap: 16px; }
+.bot-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.bot-card:hover { border-color: rgba(92,124,250,0.35); }
+.bot-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; gap: 12px; cursor: pointer; user-select: none;
+}
+.bot-left { display: flex; align-items: center; gap: 12px; }
+.bot-icon {
+  width: 38px; height: 38px; border-radius: 10px; background: var(--surface2);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.bot-name { font-size: 15px; font-weight: 700; color: var(--white); }
+.bot-server { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.bot-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.badge {
+  font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.badge.connected    { background: rgba(55,178,77,0.15); color: var(--green); border: 1px solid rgba(55,178,77,0.3); }
+.badge.disconnected { background: rgba(110,118,145,0.12); color: var(--muted); border: 1px solid var(--border); }
+.badge.connecting   { background: rgba(245,159,0,0.15); color: var(--warn); border: 1px solid rgba(245,159,0,0.3); }
+.badge.error        { background: rgba(224,49,49,0.12); color: var(--red); border: 1px solid rgba(224,49,49,0.25); }
+.badge.offline      { background: rgba(110,118,145,0.12); color: var(--muted); border: 1px solid var(--border); }
 
-  .section-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; font-weight: 600; }
+.chevron { font-size: 12px; color: var(--muted); transition: transform 0.2s; }
+.chevron.open { transform: rotate(180deg); }
 
-  .log-box { background: #0a0c12; border-radius: 8px; padding: 10px 14px; height: 140px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
-  .log-line { color: #7ec8a4; padding: 2px 0; line-height: 1.5; }
-  .log-line.warn { color: var(--warn); }
-  .log-line.err { color: var(--red); }
+.bot-card-body { display: none; border-top: 1px solid var(--border); }
+.bot-card-body.open { display: block; }
 
-  .inv-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
-  .inv-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3px; }
-  .inv-cell .cn { font-weight: 700; color: #fff; font-size: 12px; }
-  .inv-cell .nm { color: var(--muted); text-align: center; font-size: 8px; word-break: break-all; line-height: 1.2; margin-top: 1px; }
-  .inv-empty { opacity: 0.15; }
+.bot-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); }
+.bot-stat { background: var(--surface2); padding: 12px 16px; }
+.bot-stat .val { font-size: 18px; font-weight: 700; color: var(--white); }
+.bot-stat .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+.bot-stat .bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.bot-stat .bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.bar-green { background: var(--green); }
+.bar-warn  { background: var(--warn); }
 
-  .current-task { font-size: 13px; color: var(--accent); padding: 8px 12px; background: rgba(92,124,250,0.06); border-radius: 6px; border-left: 2px solid var(--accent); margin-bottom: 14px; }
+.bot-details { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
 
-  .no-bots { text-align: center; padding: 100px 20px; color: var(--muted); }
-  .no-bots-icon { font-size: 48px; margin-bottom: 16px; }
+.task-bar {
+  display: none; align-items: center; gap: 8px; padding: 8px 12px;
+  background: rgba(92,124,250,0.07); border: 1px solid rgba(92,124,250,0.2);
+  border-radius: 8px; font-size: 12px; color: var(--accent);
+}
+.task-bar.visible { display: flex; }
+.task-pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
 
-  @media (max-width: 600px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .inv-grid { grid-template-columns: repeat(6, 1fr); }
-  }
+.cmd-row { display: flex; gap: 8px; }
+.cmd-input {
+  flex: 1; padding: 9px 13px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--white); font-size: 13px; outline: none; transition: border-color 0.2s;
+  font-family: 'Courier New', monospace;
+}
+.cmd-input:focus { border-color: var(--accent); }
+.cmd-input::placeholder { color: var(--muted); }
+
+.log-section-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; margin-bottom: 8px; }
+.log-box {
+  background: #060810; border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; height: 160px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 11px;
+}
+.log-line { color: #7ec8a4; padding: 1px 0; line-height: 1.6; }
+.log-line.warn { color: var(--warn); }
+.log-line.err  { color: var(--red); }
+
+/* ── Empty ── */
+.empty-state { text-align: center; padding: 80px 20px; color: var(--muted); }
+.empty-icon { font-size: 52px; margin-bottom: 16px; }
+.empty-title { font-size: 18px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+.empty-desc { color: var(--muted); margin-bottom: 24px; }
+
+/* ── New Bot Modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 100; align-items: center; justify-content: center; padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 28px; width: 100%; max-width: 460px; animation: slideUp 0.2s ease;
+}
+@keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.modal-title { font-size: 18px; font-weight: 800; color: var(--white); margin-bottom: 4px; }
+.modal-sub { color: var(--muted); font-size: 12px; margin-bottom: 22px; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.auth-type-row { display: flex; gap: 8px; }
+.auth-opt {
+  flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface2); cursor: pointer; text-align: center; font-size: 12px;
+  font-weight: 600; color: var(--muted); transition: all 0.15s;
+}
+.auth-opt:hover { border-color: var(--accent); color: var(--accent); }
+.auth-opt.selected { border-color: var(--accent); background: rgba(92,124,250,0.1); color: var(--accent); }
+.auth-opt.ms-opt.selected { border-color: var(--ms-blue); background: rgba(0,120,212,0.1); color: #5aadff; }
+.ms-locked { font-size: 11px; color: var(--muted); margin-top: 6px; display: none; }
+.ms-locked.show { display: block; }
+
+/* ── Microsoft Auth Code Modal ── */
+#oauth-modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  z-index: 200; align-items: center; justify-content: center; padding: 20px;
+  backdrop-filter: blur(6px);
+}
+#oauth-modal.open { display: flex; }
+.oauth-card {
+  background: var(--surface); border: 2px solid var(--ms-blue); border-radius: 18px;
+  padding: 36px 32px; width: 100%; max-width: 480px; text-align: center;
+  animation: slideUp 0.25s ease;
+}
+.oauth-icon { font-size: 48px; margin-bottom: 16px; }
+.oauth-title { font-size: 20px; font-weight: 900; color: var(--white); margin-bottom: 8px; }
+.oauth-desc { color: var(--muted); font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
+.oauth-code-box {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; margin-bottom: 16px;
+}
+.oauth-code {
+  font-size: 32px; font-weight: 900; color: var(--white); letter-spacing: 0.15em;
+  font-family: 'Courier New', monospace;
+}
+.oauth-code-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-top: 6px; }
+.oauth-url { color: #5aadff; font-size: 13px; text-decoration: none; word-break: break-all; }
+.oauth-url:hover { text-decoration: underline; }
+.oauth-timer { font-size: 12px; color: var(--muted); margin-top: 14px; }
+.oauth-actions { display: flex; gap: 10px; margin-top: 22px; justify-content: center; }
+.btn-open-url { background: var(--ms-blue); color: #fff; border-color: var(--ms-blue); }
+.btn-open-url:hover { opacity: 0.87; }
+
+/* ── Upgrade notice ── */
+.upgrade-notice {
+  background: linear-gradient(135deg, rgba(245,159,0,0.08) 0%, rgba(92,124,250,0.06) 100%);
+  border: 1px solid rgba(245,159,0,0.25); border-radius: 12px; padding: 18px 20px;
+  margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.upgrade-notice p { font-size: 13px; color: var(--text); }
+.upgrade-notice strong { color: var(--warn); }
+
+@media (max-width: 620px) {
+  .summary-bar { grid-template-columns: 1fr; }
+  .bot-stats { grid-template-columns: repeat(2, 1fr); }
+  .row2 { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>⛏ MC Bot — Live Status</h1>
-  <div style="display:flex;align-items:center;gap:12px">
-    <span class="readonly-badge">👁 View Only</span>
-    <span><span class="ws-dot" id="ws-dot"></span><span id="ws-lbl">Connecting...</span></span>
-  </div>
-</header>
+<!-- ── Auth Gate ── -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo">⛏ CraftBot</div>
+    <p class="auth-sub">Sign in to manage your bots</p>
 
-<div class="container">
-  <div id="no-bots" class="no-bots">
-    <div class="no-bots-icon">🤖</div>
-    <p>No bots online right now</p>
-    <p style="font-size:12px;margin-top:8px">Bots will appear here automatically when connected</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="showTab('register')">Register</button>
+    </div>
+
+    <div id="tab-login">
+      <div class="field"><label>Email or Username</label><input id="l-ident" type="text" placeholder="you@example.com" autocomplete="username"></div>
+      <div class="field"><label>Password</label><input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+      <div class="auth-err" id="login-err"></div>
+    </div>
+
+    <div id="tab-register" style="display:none">
+      <div class="field"><label>Username</label><input id="r-uname" type="text" placeholder="coolMiner42" autocomplete="username"></div>
+      <div class="field"><label>Email</label><input id="r-email" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input id="r-pass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+      <button class="btn btn-primary" onclick="doRegister()">Create Account</button>
+      <div class="auth-err" id="reg-err"></div>
+    </div>
   </div>
-  <div id="bot-container"></div>
+</div>
+
+<!-- ── Main App ── -->
+<div id="app">
+  <header>
+    <div class="logo">⛏ CraftBot</div>
+    <div class="header-right">
+      <span class="ws-dot" id="ws-dot"></span>
+      <div class="user-chip">
+        <span class="uname" id="hdr-username">—</span>
+        <span class="tier-pill" id="hdr-tier">free</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Upgrade notice (shown for free tier) -->
+    <div class="upgrade-notice" id="upgrade-notice" style="display:none">
+      <p>You're on the <strong>Free</strong> plan — limited to 1 bot, offline auth only. Upgrade for more bot slots, Microsoft auth, and all AI plugins.</p>
+      <button class="btn btn-sm" style="background:rgba(245,159,0,0.15);color:var(--warn);border-color:rgba(245,159,0,0.35);white-space:nowrap">Upgrade Plan</button>
+    </div>
+
+    <!-- Summary row -->
+    <div class="summary-bar">
+      <div class="sum-card">
+        <div class="sum-val" id="sum-bots">0</div>
+        <div class="sum-lbl">My Bots</div>
+        <div class="sum-sub" id="sum-slots">0 / 1 slots used</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-val" id="sum-online">0</div>
+        <div class="sum-lbl">Online</div>
+        <div class="sum-sub">Currently connected</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-val" id="sum-tasks">0</div>
+        <div class="sum-lbl">Active Tasks</div>
+        <div class="sum-sub">Running right now</div>
+      </div>
+    </div>
+
+    <!-- Bots section -->
+    <div class="section-header">
+      <span class="section-title">My Bots</span>
+      <button class="btn btn-primary btn-sm" onclick="openNewBot()">+ Add Bot</button>
+    </div>
+
+    <div id="bot-list" class="bot-list"></div>
+    <div id="empty-state" class="empty-state" style="display:none">
+      <div class="empty-icon">🤖</div>
+      <div class="empty-title">No bots yet</div>
+      <p class="empty-desc">Add your first bot to get started. It'll connect to any Minecraft Java server.</p>
+      <button class="btn btn-primary" onclick="openNewBot()">+ Add Your First Bot</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── New Bot Modal ── -->
+<div class="modal-overlay" id="new-bot-modal">
+  <div class="modal">
+    <div class="modal-title">Add New Bot</div>
+    <div class="modal-sub">The bot will connect to your Minecraft server automatically</div>
+
+    <div class="field"><label>Bot Name (Minecraft username)</label><input id="nb-name" type="text" placeholder="CoolBot123" maxlength="16"></div>
+    <div class="row2">
+      <div class="field"><label>Server IP</label><input id="nb-ip" type="text" placeholder="play.example.com"></div>
+      <div class="field"><label>Server Port</label><input id="nb-port" type="number" value="25565" min="1" max="65535"></div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Minecraft Version</label>
+        <input id="nb-version" type="text" placeholder="auto (1.20.1)" value="">
+      </div>
+      <div class="field" style="display:flex;flex-direction:column">
+        <label>Auth Type</label>
+        <div class="auth-type-row">
+          <div class="auth-opt selected" id="opt-offline" onclick="selectAuth('offline')">Offline</div>
+          <div class="auth-opt ms-opt" id="opt-microsoft" onclick="selectAuth('microsoft')">Microsoft</div>
+        </div>
+        <div class="ms-locked" id="ms-locked">⭐ Premium required for Microsoft auth</div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewBot()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitNewBot()">Create Bot</button>
+    </div>
+    <div class="auth-err" id="nb-err"></div>
+  </div>
+</div>
+
+<!-- ── Microsoft OAuth Modal ── -->
+<div id="oauth-modal">
+  <div class="oauth-card">
+    <div class="oauth-icon">🔐</div>
+    <div class="oauth-title">Microsoft Sign-In Required</div>
+    <p class="oauth-desc">
+      Your bot needs to authenticate with Microsoft. Open the link below in your browser,
+      then enter the code shown to complete sign-in.
+    </p>
+    <div class="oauth-code-box">
+      <div class="oauth-code" id="oauth-code">—</div>
+      <div class="oauth-code-label">Enter this code at the URL below</div>
+    </div>
+    <a class="oauth-url" id="oauth-url" href="#" target="_blank">—</a>
+    <div class="oauth-timer" id="oauth-timer"></div>
+    <div class="oauth-actions">
+      <button class="btn btn-secondary" onclick="closeOAuth()">Dismiss</button>
+      <button class="btn btn-open-url btn-ms" onclick="openOAuthUrl()">Open in Browser ↗</button>
+    </div>
+  </div>
 </div>
 
 <script src="/api/socket.io/socket.io.js"></script>
 <script>
-const bots = {};
-const socket = io({ path: '/api/socket.io/' });
+// ─── State ────────────────────────────────────────────────────────────────
+let authToken = null;
+let currentUser = null;
+let profileData = null;
+let bots = {};
+let socket = null;
+let oauthExpiresAt = null;
+let oauthTimerInterval = null;
+let selectedAuth = 'offline';
 
-socket.on('connect', () => {
-  document.getElementById('ws-dot').className = 'ws-dot on';
-  document.getElementById('ws-lbl').textContent = 'Live';
-});
+// ─── Auth ─────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const ident = document.getElementById('l-ident').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  setErr('login-err', '');
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: ident, username: ident, password: pass }),
+    });
+    const d = await r.json();
+    if (!r.ok) { setErr('login-err', d.error || 'Login failed'); return; }
+    authToken = d.token;
+    currentUser = d.user;
+    await bootApp();
+  } catch { setErr('login-err', 'Network error'); }
+}
 
-socket.on('disconnect', () => {
-  document.getElementById('ws-dot').className = 'ws-dot';
-  document.getElementById('ws-lbl').textContent = 'Offline';
-});
+async function doRegister() {
+  const uname = document.getElementById('r-uname').value.trim();
+  const email = document.getElementById('r-email').value.trim();
+  const pass  = document.getElementById('r-pass').value;
+  setErr('reg-err', '');
+  try {
+    const r = await fetch('/api/auth/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username: uname, email, password: pass }),
+    });
+    const d = await r.json();
+    if (!r.ok) { setErr('reg-err', d.error || 'Registration failed'); return; }
+    authToken = d.token;
+    currentUser = d.user;
+    await bootApp();
+  } catch { setErr('reg-err', 'Network error'); }
+}
 
-socket.on('bots:all', data => {
-  data.forEach(b => { bots[b.id] = b; });
-  renderAll();
-});
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  authToken = null; currentUser = null; profileData = null; bots = {};
+  if (socket) { socket.disconnect(); socket = null; }
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-gate').style.display = 'flex';
+}
 
-socket.on('bot:status', ({ id, status }) => {
-  if (bots[id]) bots[id].status = status;
-  const el = document.getElementById(`badge-${id}`);
-  if (el) { el.className = `badge ${status}`; el.textContent = status; }
-});
+function showTab(tab) {
+  document.getElementById('tab-login').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('tab-register').style.display = tab === 'register' ? '' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0 && tab==='login')||(i===1 && tab==='register')));
+}
 
-socket.on('bot:health', ({ id, health, food }) => {
-  if (!bots[id]) return;
-  bots[id].health = health; bots[id].food = food;
-  setText(`h-${id}`, Math.round(health));
-  setText(`f-${id}`, Math.round(food));
-  setWidth(`hbar-${id}`, health / 20 * 100);
-  setWidth(`fbar-${id}`, food / 20 * 100);
-});
+// ─── Boot ─────────────────────────────────────────────────────────────────
+async function bootApp() {
+  try {
+    const r = await fetch('/api/user/profile', {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      credentials: 'include',
+    });
+    if (!r.ok) return;
+    profileData = await r.json();
+  } catch { return; }
 
-socket.on('bot:position', ({ id, pos }) => {
-  if (pos) setText(`pos-${id}`, `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}`);
-});
+  document.getElementById('auth-gate').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'flex';
+  app.style.flexDirection = 'column';
 
-socket.on('bot:log', ({ id, entry }) => {
-  const box = document.getElementById(`log-${id}`);
-  if (!box) return;
-  const line = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.Z]+\]\s?/, '').trim();
-  const d = document.createElement('div');
-  d.className = 'log-line' + (line.toLowerCase().includes('error') || line.toLowerCase().includes('fail') ? ' err' : line.toLowerCase().includes('warn') ? ' warn' : '');
-  d.textContent = line;
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
-  while (box.children.length > 80) box.removeChild(box.firstChild);
-});
+  // Header
+  document.getElementById('hdr-username').textContent = profileData.username;
+  const tierEl = document.getElementById('hdr-tier');
+  tierEl.textContent = profileData.tier;
+  tierEl.className = `tier-pill tier-${profileData.tier}`;
 
-socket.on('bot:inventory', ({ id, items }) => renderInventory(id, items));
+  // Upgrade notice
+  if (profileData.tier === 'free') {
+    document.getElementById('upgrade-notice').style.display = 'flex';
+  }
 
-socket.on('bot:tasks', ({ id, tasks }) => {
-  const running = tasks.find(t => t.status === 'running');
-  const el = document.getElementById(`task-${id}`);
-  if (el) { el.textContent = running ? `⚡ ${running.name}` : ''; el.style.display = running ? 'block' : 'none'; }
-});
+  // Microsoft auth option locked for free tier
+  updateMsAuthLock();
 
-function renderAll() {
+  await loadBots();
+  connectSocket();
+}
+
+async function tryAutoLogin() {
+  try {
+    const r = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!r.ok) return;
+    const d = await r.json();
+    authToken = null;
+    currentUser = d.user;
+    await bootApp();
+  } catch {}
+}
+
+// ─── Bots ─────────────────────────────────────────────────────────────────
+async function loadBots() {
+  const r = await apiFetch('/api/user/bots');
+  if (!r.ok) return;
+  const d = await r.json();
+  bots = {};
+  d.bots.forEach(b => { bots[b.id] = b; });
+  renderBots();
+  updateSummary();
+}
+
+function renderBots() {
+  const list = document.getElementById('bot-list');
+  const empty = document.getElementById('empty-state');
   const arr = Object.values(bots);
-  document.getElementById('no-bots').style.display = arr.length ? 'none' : 'block';
+  if (!arr.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  // Add cards for new bots, update existing ones
   arr.forEach(b => {
-    if (!document.getElementById(`bot-${b.id}`))
-      document.getElementById('bot-container').insertAdjacentHTML('beforeend', cardHTML(b));
-    populateCard(b);
+    const existing = document.getElementById(`bc-${b.id}`);
+    if (!existing) {
+      list.insertAdjacentHTML('beforeend', botCardHTML(b));
+      if (b.stats?.logs?.length) {
+        b.stats.logs.slice(-30).forEach(entry => appendLog(b.id, entry));
+      }
+    } else {
+      updateBotCard(b);
+    }
   });
 }
 
-function cardHTML(b) {
+function botCardHTML(b) {
+  const st = b.status || 'offline';
   return `
-  <div class="bot-card" id="bot-${b.id}">
-    <div class="bot-header">
-      <div class="bot-name">${esc(b.username)}</div>
-      <span class="badge ${b.status}" id="badge-${b.id}">${b.status}</span>
+<div class="bot-card" id="bc-${b.id}">
+  <div class="bot-card-header" onclick="toggleCard(${b.id})">
+    <div class="bot-left">
+      <div class="bot-icon">🤖</div>
+      <div>
+        <div class="bot-name">${esc(b.botName)}</div>
+        <div class="bot-server">${esc(b.serverIp)}:${b.serverPort} · MC ${esc(b.mcVersion)}</div>
+      </div>
     </div>
-    <div class="server-info">${esc(b.host)}:${b.port} &nbsp;•&nbsp; Minecraft ${b.version}</div>
-
-    <div id="task-${b.id}" class="current-task" style="display:none"></div>
-
-    <div class="stats-grid">
-      <div class="stat">
-        <div class="stat-val" id="h-${b.id}">—</div>
-        <div class="stat-lbl">Health ❤️</div>
+    <div class="bot-actions">
+      <span class="badge ${st}" id="badge-${b.id}">${st}</span>
+      ${actionBtns(b)}
+      <button class="btn btn-danger btn-sm btn-icon" onclick="deleteBot(event,${b.id})" title="Delete">🗑</button>
+      <span class="chevron" id="chev-${b.id}">▼</span>
+    </div>
+  </div>
+  <div class="bot-card-body" id="body-${b.id}">
+    <div class="bot-stats">
+      <div class="bot-stat">
+        <div class="val" id="h-${b.id}">—</div>
+        <div class="lbl">Health ❤️</div>
         <div class="bar"><div class="bar-fill bar-green" id="hbar-${b.id}" style="width:0%"></div></div>
       </div>
-      <div class="stat">
-        <div class="stat-val" id="f-${b.id}">—</div>
-        <div class="stat-lbl">Food 🍗</div>
+      <div class="bot-stat">
+        <div class="val" id="f-${b.id}">—</div>
+        <div class="lbl">Food 🍗</div>
         <div class="bar"><div class="bar-fill bar-warn" id="fbar-${b.id}" style="width:0%"></div></div>
       </div>
-      <div class="stat" style="grid-column:span 2">
-        <div class="stat-val" id="pos-${b.id}" style="font-size:14px;margin-top:6px">—</div>
-        <div class="stat-lbl">Position 📍</div>
+      <div class="bot-stat">
+        <div class="val" id="pos-${b.id}" style="font-size:12px;margin-top:4px">—</div>
+        <div class="lbl">Position 📍</div>
+      </div>
+      <div class="bot-stat">
+        <div class="val" id="up-${b.id}">—</div>
+        <div class="lbl">Uptime ⏱</div>
       </div>
     </div>
-
-    <div class="divider"></div>
-    <div class="section-title">Live Logs 📋</div>
-    <div class="log-box" id="log-${b.id}"></div>
-
-    <div class="divider"></div>
-    <div class="section-title">Inventory 🎒</div>
-    <div class="inv-grid" id="inv-${b.id}"></div>
-  </div>`;
+    <div class="bot-details">
+      <div class="task-bar" id="task-${b.id}">
+        <span class="task-pulse"></span>
+        <span id="task-txt-${b.id}"></span>
+      </div>
+      <div>
+        <div class="log-section-title">Send Command</div>
+        <div class="cmd-row">
+          <input class="cmd-input" id="cmd-${b.id}" placeholder="mine diamond 16  |  follow Steve  |  stop" onkeydown="cmdKey(event,${b.id})">
+          <button class="btn btn-secondary btn-sm" onclick="sendCmd(${b.id})">Send ↵</button>
+        </div>
+      </div>
+      <div>
+        <div class="log-section-title">Live Logs</div>
+        <div class="log-box" id="log-${b.id}"></div>
+      </div>
+    </div>
+  </div>
+</div>`;
 }
 
-function populateCard(b) {
-  setText(`h-${b.id}`, Math.round(b.health || 0));
-  setText(`f-${b.id}`, Math.round(b.food || 0));
-  setWidth(`hbar-${b.id}`, (b.health || 0) / 20 * 100);
-  setWidth(`fbar-${b.id}`, (b.food || 0) / 20 * 100);
-  if (b.position) setText(`pos-${b.id}`, `${Math.round(b.position.x)}, ${Math.round(b.position.y)}, ${Math.round(b.position.z)}`);
-  renderInventory(b.id, b.inventory || []);
-  const box = document.getElementById(`log-${b.id}`);
-  if (box && !box.children.length && b.logs) {
-    b.logs.slice(-30).forEach(entry => {
-      const line = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.Z]+\]\s?/, '').trim();
-      const d = document.createElement('div');
-      d.className = 'log-line';
-      d.textContent = line;
-      box.appendChild(d);
-    });
-    box.scrollTop = box.scrollHeight;
+function actionBtns(b) {
+  const st = b.status || 'offline';
+  if (st === 'connected' || st === 'connecting') {
+    return `<button class="btn btn-secondary btn-sm" onclick="disconnectBot(event,${b.id})">Disconnect</button>`;
+  }
+  return `<button class="btn btn-primary btn-sm" onclick="connectBot(event,${b.id})">Connect</button>`;
+}
+
+function updateBotCard(b) {
+  const badge = document.getElementById(`badge-${b.id}`);
+  if (badge) { badge.className = `badge ${b.status||'offline'}`; badge.textContent = b.status||'offline'; }
+  if (b.stats) {
+    setText(`h-${b.id}`, Math.round(b.stats.health || 0));
+    setText(`f-${b.id}`, Math.round(b.stats.food || 0));
+    setWidth(`hbar-${b.id}`, (b.stats.health || 0) / 20 * 100);
+    setWidth(`fbar-${b.id}`, (b.stats.food || 0) / 20 * 100);
+    if (b.stats.position) setText(`pos-${b.id}`, `${b.stats.position.x}, ${b.stats.position.y}, ${b.stats.position.z}`);
+    setText(`up-${b.id}`, fmtUptime(b.stats.uptime));
   }
 }
 
-function renderInventory(id, items) {
-  const grid = document.getElementById(`inv-${id}`);
-  if (!grid) return;
-  const slots = Array(18).fill(null);
-  items.forEach(item => { if (item.slot < 18) slots[item.slot] = item; });
-  grid.innerHTML = slots.map(item => item
-    ? `<div class="inv-cell" title="${esc(item.name)} ×${item.count}"><div class="cn">${item.count}</div><div class="nm">${item.name.replace(/_/g,' ').slice(0,10)}</div></div>`
-    : `<div class="inv-cell inv-empty">·</div>`
-  ).join('');
+function updateSummary() {
+  const arr = Object.values(bots);
+  const online = arr.filter(b => b.status === 'connected').length;
+  const tasks  = arr.filter(b => b.currentTask).length;
+  setText('sum-bots',   arr.length);
+  setText('sum-online', online);
+  setText('sum-tasks',  tasks);
+  if (profileData) {
+    setText('sum-slots', `${arr.length} / ${profileData.botSlotsMax} slots used`);
+  }
 }
 
+function toggleCard(id) {
+  const body = document.getElementById(`body-${id}`);
+  const chev = document.getElementById(`chev-${id}`);
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev?.classList.toggle('open', !isOpen);
+}
+
+async function connectBot(e, id) {
+  e.stopPropagation();
+  const r = await apiFetch(`/api/user/bots/${id}/connect`, { method: 'POST' });
+  const d = await r.json();
+  if (!r.ok) { alert(d.error); return; }
+  bots[id] = { ...bots[id], status: 'connecting', runtimeId: d.runtimeId };
+  updateBotCard(bots[id]);
+  refreshActionBtns(id);
+}
+
+async function disconnectBot(e, id) {
+  e.stopPropagation();
+  await apiFetch(`/api/user/bots/${id}/disconnect`, { method: 'POST' });
+  if (bots[id]) { bots[id].status = 'offline'; updateBotCard(bots[id]); refreshActionBtns(id); }
+}
+
+async function deleteBot(e, id) {
+  e.stopPropagation();
+  if (!confirm(`Delete bot "${bots[id]?.botName}"? This cannot be undone.`)) return;
+  await apiFetch(`/api/user/bots/${id}`, { method: 'DELETE' });
+  delete bots[id];
+  const card = document.getElementById(`bc-${id}`);
+  if (card) card.remove();
+  updateSummary();
+  if (!Object.keys(bots).length) document.getElementById('empty-state').style.display = 'block';
+}
+
+function refreshActionBtns(id) {
+  const card = document.getElementById(`bc-${id}`);
+  if (!card) return;
+  const actionsDiv = card.querySelector('.bot-actions');
+  const btn = actionsDiv?.querySelector('.btn:not(.btn-danger)');
+  if (btn) btn.outerHTML = actionBtns(bots[id]);
+}
+
+async function sendCmd(id) {
+  const input = document.getElementById(`cmd-${id}`);
+  const raw = input.value.trim();
+  if (!raw) return;
+  input.value = '';
+  appendLog(id, `> ${raw}`);
+  const r = await apiFetch(`/api/user/bots/${id}/command`, {
+    method: 'POST', body: JSON.stringify({ raw }),
+  });
+  const d = await r.json();
+  if (r.ok) appendLog(id, `← ${d.result}`);
+  else appendLog(id, `✗ ${d.error}`);
+}
+
+function cmdKey(e, id) { if (e.key === 'Enter') sendCmd(id); }
+
+function appendLog(id, entry) {
+  const box = document.getElementById(`log-${id}`);
+  if (!box) return;
+  const line = String(entry).replace(/\[\d{4}-\d{2}-\d{2}T[\d:.Z]+\]\s?/, '').trim();
+  const d = document.createElement('div');
+  const low = line.toLowerCase();
+  d.className = 'log-line' +
+    (low.includes('error') || low.includes('fail') || low.includes('✗') ? ' err' :
+     low.includes('warn') || low.includes('⚠') ? ' warn' : '');
+  d.textContent = line;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  while (box.children.length > 100) box.removeChild(box.firstChild);
+}
+
+// ─── New Bot Modal ─────────────────────────────────────────────────────────
+function openNewBot() {
+  document.getElementById('nb-err').textContent = '';
+  document.getElementById('new-bot-modal').classList.add('open');
+}
+function closeNewBot() { document.getElementById('new-bot-modal').classList.remove('open'); }
+
+function selectAuth(type) {
+  if (type === 'microsoft' && profileData && !profileData.tierInfo.microsoftAuth) return;
+  selectedAuth = type;
+  document.getElementById('opt-offline').classList.toggle('selected', type === 'offline');
+  document.getElementById('opt-microsoft').classList.toggle('selected', type === 'microsoft');
+}
+
+function updateMsAuthLock() {
+  const locked = profileData && !profileData.tierInfo.microsoftAuth;
+  const msOpt = document.getElementById('opt-microsoft');
+  const notice = document.getElementById('ms-locked');
+  if (locked) {
+    msOpt.style.opacity = '0.45';
+    msOpt.style.cursor = 'not-allowed';
+    notice.classList.add('show');
+  } else {
+    msOpt.style.opacity = '';
+    msOpt.style.cursor = '';
+    notice.classList.remove('show');
+  }
+}
+
+async function submitNewBot() {
+  const botName   = document.getElementById('nb-name').value.trim();
+  const serverIp  = document.getElementById('nb-ip').value.trim();
+  const serverPort= parseInt(document.getElementById('nb-port').value) || 25565;
+  const mcVersion = document.getElementById('nb-version').value.trim() || undefined;
+  setErr('nb-err', '');
+
+  if (!botName || !serverIp) { setErr('nb-err', 'Bot name and server IP are required'); return; }
+
+  const r = await apiFetch('/api/user/bots', {
+    method: 'POST',
+    body: JSON.stringify({ botName, serverIp, serverPort, mcVersion, authType: selectedAuth }),
+  });
+  const d = await r.json();
+  if (!r.ok) { setErr('nb-err', d.error || 'Failed to create bot'); return; }
+
+  closeNewBot();
+  bots[d.bot.id] = {
+    id: d.bot.id, botName, serverIp, serverPort,
+    mcVersion: mcVersion || 'auto', authType: selectedAuth,
+    status: 'offline', runtimeId: null, stats: null,
+  };
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('bot-list').insertAdjacentHTML('beforeend', botCardHTML(bots[d.bot.id]));
+  updateSummary();
+}
+
+// ─── Microsoft OAuth Modal ────────────────────────────────────────────────
+function openOAuthModal(data) {
+  document.getElementById('oauth-code').textContent = data.code || '—';
+  const urlEl = document.getElementById('oauth-url');
+  urlEl.textContent = data.url || '—';
+  urlEl.href = data.url || '#';
+
+  oauthExpiresAt = data.expiresIn ? Date.now() + data.expiresIn * 1000 : null;
+  if (oauthTimerInterval) clearInterval(oauthTimerInterval);
+  if (oauthExpiresAt) {
+    updateOAuthTimer();
+    oauthTimerInterval = setInterval(updateOAuthTimer, 1000);
+  }
+
+  document.getElementById('oauth-modal').classList.add('open');
+}
+
+function updateOAuthTimer() {
+  if (!oauthExpiresAt) return;
+  const remaining = Math.max(0, Math.floor((oauthExpiresAt - Date.now()) / 1000));
+  document.getElementById('oauth-timer').textContent = remaining > 0
+    ? `Expires in ${remaining}s`
+    : 'Code expired — restart the bot to get a new code';
+  if (remaining === 0) clearInterval(oauthTimerInterval);
+}
+
+function closeOAuth() {
+  document.getElementById('oauth-modal').classList.remove('open');
+  if (oauthTimerInterval) clearInterval(oauthTimerInterval);
+}
+
+function openOAuthUrl() {
+  const url = document.getElementById('oauth-url').href;
+  if (url && url !== '#') window.open(url, '_blank');
+}
+
+// ─── Socket.io ────────────────────────────────────────────────────────────
+function connectSocket() {
+  const token = authToken ||
+    document.cookie.split('; ').find(r => r.startsWith('mcbot_token='))?.split('=')[1];
+
+  socket = io({ path: '/api/socket.io/', auth: token ? { token } : {} });
+
+  socket.on('connect', () => {
+    document.getElementById('ws-dot').className = 'ws-dot on';
+  });
+  socket.on('disconnect', () => {
+    document.getElementById('ws-dot').className = 'ws-dot';
+  });
+
+  // Global bot events — match by runtimeId to our db bot ids
+  socket.on('bot:status', ({ id: runtimeId, status }) => {
+    const b = findBotByRuntime(runtimeId);
+    if (!b) return;
+    b.status = status;
+    const badge = document.getElementById(`badge-${b.id}`);
+    if (badge) { badge.className = `badge ${status}`; badge.textContent = status; }
+    refreshActionBtns(b.id);
+    updateSummary();
+  });
+
+  socket.on('bot:health', ({ id: runtimeId, health, food }) => {
+    const b = findBotByRuntime(runtimeId);
+    if (!b) return;
+    if (!b.stats) b.stats = {};
+    b.stats.health = health; b.stats.food = food;
+    setText(`h-${b.id}`, Math.round(health));
+    setText(`f-${b.id}`, Math.round(food));
+    setWidth(`hbar-${b.id}`, health / 20 * 100);
+    setWidth(`fbar-${b.id}`, food / 20 * 100);
+  });
+
+  socket.on('bot:position', ({ id: runtimeId, pos }) => {
+    const b = findBotByRuntime(runtimeId);
+    if (!b || !pos) return;
+    setText(`pos-${b.id}`, `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}`);
+  });
+
+  socket.on('bot:log', ({ id: runtimeId, entry }) => {
+    const b = findBotByRuntime(runtimeId);
+    if (b) appendLog(b.id, entry);
+  });
+
+  socket.on('bot:tasks', ({ id: runtimeId, tasks }) => {
+    const b = findBotByRuntime(runtimeId);
+    if (!b) return;
+    const running = tasks.find(t => t.status === 'running');
+    const bar = document.getElementById(`task-${b.id}`);
+    const txt = document.getElementById(`task-txt-${b.id}`);
+    if (bar && txt) {
+      bar.classList.toggle('visible', !!running);
+      txt.textContent = running ? running.name : '';
+    }
+    b.currentTask = running?.name ?? null;
+    updateSummary();
+  });
+
+  // Microsoft OAuth auth code — streamed to this user's private room
+  socket.on('bot:auth_code', (data) => {
+    const b = findBotByRuntime(data.id);
+    if (b) appendLog(b.id, `🔐 Microsoft auth required — code: ${data.code} at ${data.url}`);
+    openOAuthModal(data);
+  });
+}
+
+function findBotByRuntime(runtimeId) {
+  return Object.values(bots).find(b => b.runtimeId === runtimeId) || null;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+async function apiFetch(url, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  return fetch(url, { ...opts, headers, credentials: 'include' });
+}
+
+function setErr(id, msg) { const el = document.getElementById(id); if (el) el.textContent = msg; }
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function setWidth(id, pct) { const el = document.getElementById(id); if (el) el.style.width = pct + '%'; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtUptime(ms) {
+  if (!ms) return '—';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s/60)}m ${s%60}s`;
+  return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────
+tryAutoLogin();
+
+document.getElementById('l-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('r-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
 </script>
 </body>
 </html>
