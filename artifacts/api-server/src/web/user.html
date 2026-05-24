@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MC Bot - User Panel</title>
+<title>MC Bot — Live Status</title>
 <style>
   :root {
     --bg: #0f1117;
@@ -20,289 +20,199 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
 
-  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px; width: 360px; text-align: center; }
-  .login-card h1 { font-size: 22px; margin-bottom: 8px; color: #fff; }
-  .login-card p { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
-  .login-err { color: var(--red); font-size: 12px; margin-top: 10px; min-height: 18px; }
-
-  #app { display: none; }
-
   header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
   header h1 { font-size: 18px; font-weight: 700; color: #fff; }
   .ws-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: inline-block; margin-right: 6px; transition: background 0.3s; }
   .ws-dot.on { background: var(--green); }
+  .readonly-badge { font-size: 11px; background: rgba(92,124,250,0.15); color: var(--accent); border: 1px solid rgba(92,124,250,0.3); padding: 3px 10px; border-radius: 20px; font-weight: 600; }
 
-  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
 
-  .bot-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
-  .bot-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .bot-name { font-weight: 700; color: #fff; font-size: 16px; }
-  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
-  .badge.connected { background: rgba(55,178,77,0.15); color: var(--green); }
-  .badge.disconnected, .badge.error { background: rgba(224,49,49,0.15); color: var(--red); }
-  .badge.connecting { background: rgba(245,159,0,0.15); color: var(--warn); }
+  .bot-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+  .bot-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .bot-name { font-weight: 700; color: #fff; font-size: 18px; }
+  .badge { font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .badge.connected { background: rgba(55,178,77,0.15); color: var(--green); border: 1px solid rgba(55,178,77,0.3); }
+  .badge.disconnected, .badge.error { background: rgba(224,49,49,0.15); color: var(--red); border: 1px solid rgba(224,49,49,0.3); }
+  .badge.connecting { background: rgba(245,159,0,0.15); color: var(--warn); border: 1px solid rgba(245,159,0,0.3); }
 
-  .bot-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
-  .stat { text-align: center; background: var(--surface2); border-radius: 6px; padding: 10px 6px; }
-  .stat-v { font-size: 20px; font-weight: 700; color: #fff; }
-  .stat-l { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
-  .bar { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 5px; }
-  .bar-g { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.4s; }
-  .bar-y { height: 100%; background: var(--warn); border-radius: 3px; transition: width 0.4s; }
+  .server-info { font-size: 12px; color: var(--muted); margin-bottom: 16px; margin-top: 2px; }
 
-  .bot-task { font-size: 12px; color: var(--accent); margin: 4px 0 2px; }
-  .bot-pos { font-size: 11px; color: var(--muted); font-family: monospace; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat { background: var(--surface2); border-radius: 8px; padding: 12px; text-align: center; }
+  .stat-val { font-size: 22px; font-weight: 700; color: #fff; }
+  .stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 6px; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+  .bar-green { background: var(--green); }
+  .bar-warn { background: var(--warn); }
 
   .divider { height: 1px; background: var(--border); margin: 14px 0; }
 
-  .quick-cmds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .qbtn { padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface2); color: var(--text); font-size: 12px; cursor: pointer; transition: all 0.15s; user-select: none; }
-  .qbtn:hover { border-color: var(--accent); color: var(--accent); background: rgba(92,124,250,0.06); }
+  .section-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; font-weight: 600; }
 
-  .cmd-row { display: flex; gap: 8px; }
-  .cmd-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none; }
-  .cmd-input:focus { border-color: var(--accent); }
-  .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 600; }
-  .btn-blue { background: var(--accent); color: #fff; }
-  .btn-red { background: var(--red); color: #fff; }
-  .btn:hover { opacity: 0.85; }
+  .log-box { background: #0a0c12; border-radius: 8px; padding: 10px 14px; height: 140px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
+  .log-line { color: #7ec8a4; padding: 2px 0; line-height: 1.5; }
+  .log-line.warn { color: var(--warn); }
+  .log-line.err { color: var(--red); }
 
-  .result-box { font-size: 12px; color: var(--green); font-family: monospace; padding: 7px 12px; background: rgba(55,178,77,0.08); border-radius: 5px; margin-top: 8px; display: none; border-left: 2px solid var(--green); }
+  .inv-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+  .inv-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3px; }
+  .inv-cell .cn { font-weight: 700; color: #fff; font-size: 12px; }
+  .inv-cell .nm { color: var(--muted); text-align: center; font-size: 8px; word-break: break-all; line-height: 1.2; margin-top: 1px; }
+  .inv-empty { opacity: 0.15; }
 
-  .log-box { background: #0a0c12; border-radius: 6px; padding: 10px 12px; height: 130px; overflow-y: auto; font-family: monospace; font-size: 11px; margin-top: 12px; }
-  .log-line { color: #7ec8a4; padding: 1.5px 0; line-height: 1.5; }
+  .current-task { font-size: 13px; color: var(--accent); padding: 8px 12px; background: rgba(92,124,250,0.06); border-radius: 6px; border-left: 2px solid var(--accent); margin-bottom: 14px; }
 
-  .inv-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; margin-top: 10px; }
-  .inv-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; }
-  .inv-cell .cn { font-weight: 700; color: #fff; font-size: 11px; }
-  .inv-cell .nm { color: var(--muted); text-align: center; font-size: 8px; word-break: break-all; }
-
-  .no-bots { text-align: center; padding: 80px 20px; color: var(--muted); }
-
-  input[type=password], input[type=text] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 6px; font-size: 13px; outline: none; width: 100%; margin-bottom: 12px; }
-  input:focus { border-color: var(--accent); }
+  .no-bots { text-align: center; padding: 100px 20px; color: var(--muted); }
+  .no-bots-icon { font-size: 48px; margin-bottom: 16px; }
 
   @media (max-width: 600px) {
-    .bot-stats { grid-template-columns: repeat(2, 1fr); }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .inv-grid { grid-template-columns: repeat(6, 1fr); }
   }
 </style>
 </head>
 <body>
 
-<div id="login-screen">
-  <div class="login-card">
-    <h1>⛏ MC Bot</h1>
-    <p>User Panel — enter password to access</p>
-    <input type="password" id="lpass" placeholder="Password" />
-    <button class="btn btn-blue" style="width:100%;padding:10px" onclick="doLogin()">Login</button>
-    <div class="login-err" id="lerr"></div>
+<header>
+  <h1>⛏ MC Bot — Live Status</h1>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="readonly-badge">👁 View Only</span>
+    <span><span class="ws-dot" id="ws-dot"></span><span id="ws-lbl">Connecting...</span></span>
   </div>
-</div>
+</header>
 
-<div id="app">
-  <header>
-    <h1>⛏ MC Bot — User Panel</h1>
-    <div style="display:flex;align-items:center;gap:16px">
-      <span><span class="ws-dot" id="ws-dot"></span><span id="ws-lbl">Connecting...</span></span>
-      <button class="btn btn-red" style="padding:5px 12px;font-size:12px" onclick="logout()">Logout</button>
-    </div>
-  </header>
-
-  <div class="container">
-    <div id="no-bots" class="no-bots" style="display:none">
-      <p style="font-size:32px;margin-bottom:12px">🤖</p>
-      <p>No bots online right now</p>
-    </div>
-    <div id="bot-container"></div>
+<div class="container">
+  <div id="no-bots" class="no-bots">
+    <div class="no-bots-icon">🤖</div>
+    <p>No bots online right now</p>
+    <p style="font-size:12px;margin-top:8px">Bots will appear here automatically when connected</p>
   </div>
+  <div id="bot-container"></div>
 </div>
 
 <script src="/api/socket.io/socket.io.js"></script>
 <script>
-let socket = null;
 const bots = {};
+const socket = io({ path: '/api/socket.io/' });
 
-document.getElementById('lpass').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
+socket.on('connect', () => {
+  document.getElementById('ws-dot').className = 'ws-dot on';
+  document.getElementById('ws-lbl').textContent = 'Live';
 });
 
-const _saved = localStorage.getItem('mcbot_pass');
-if (_saved) initSocket(_saved);
+socket.on('disconnect', () => {
+  document.getElementById('ws-dot').className = 'ws-dot';
+  document.getElementById('ws-lbl').textContent = 'Offline';
+});
 
-function doLogin() {
-  const pass = document.getElementById('lpass').value.trim();
-  if (!pass) return;
-  document.getElementById('lerr').textContent = '';
-  initSocket(pass);
-}
+socket.on('bots:all', data => {
+  data.forEach(b => { bots[b.id] = b; });
+  renderAll();
+});
 
-function initSocket(password) {
-  if (socket) { socket.disconnect(); socket = null; }
-  socket = io({ auth: { password }, path: '/api/socket.io/' });
+socket.on('bot:status', ({ id, status }) => {
+  if (bots[id]) bots[id].status = status;
+  const el = document.getElementById(`badge-${id}`);
+  if (el) { el.className = `badge ${status}`; el.textContent = status; }
+});
 
-  socket.on('connect', () => {
-    localStorage.setItem('mcbot_pass', password);
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('ws-dot').className = 'ws-dot on';
-    document.getElementById('ws-lbl').textContent = 'Live';
-  });
+socket.on('bot:health', ({ id, health, food }) => {
+  if (!bots[id]) return;
+  bots[id].health = health; bots[id].food = food;
+  setText(`h-${id}`, Math.round(health));
+  setText(`f-${id}`, Math.round(food));
+  setWidth(`hbar-${id}`, health / 20 * 100);
+  setWidth(`fbar-${id}`, food / 20 * 100);
+});
 
-  socket.on('connect_error', () => {
-    localStorage.removeItem('mcbot_pass');
-    document.getElementById('lerr').textContent = 'Wrong password!';
-    if (socket) { socket.disconnect(); socket = null; }
-  });
+socket.on('bot:position', ({ id, pos }) => {
+  if (pos) setText(`pos-${id}`, `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}`);
+});
 
-  socket.on('disconnect', () => {
-    document.getElementById('ws-dot').className = 'ws-dot';
-    document.getElementById('ws-lbl').textContent = 'Offline';
-  });
+socket.on('bot:log', ({ id, entry }) => {
+  const box = document.getElementById(`log-${id}`);
+  if (!box) return;
+  const line = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.Z]+\]\s?/, '').trim();
+  const d = document.createElement('div');
+  d.className = 'log-line' + (line.toLowerCase().includes('error') || line.toLowerCase().includes('fail') ? ' err' : line.toLowerCase().includes('warn') ? ' warn' : '');
+  d.textContent = line;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  while (box.children.length > 80) box.removeChild(box.firstChild);
+});
 
-  socket.on('bots:all', data => {
-    data.forEach(b => { bots[b.id] = b; });
-    renderAll();
-  });
+socket.on('bot:inventory', ({ id, items }) => renderInventory(id, items));
 
-  socket.on('bot:status', ({ id, status }) => {
-    if (bots[id]) bots[id].status = status;
-    const el = document.getElementById(`badge-${id}`);
-    if (el) { el.className = `badge ${status}`; el.textContent = status; }
-  });
-
-  socket.on('bot:health', ({ id, health, food }) => {
-    if (!bots[id]) return;
-    bots[id].health = health; bots[id].food = food;
-    set(`h-${id}`, Math.round(health));
-    set(`f-${id}`, Math.round(food));
-    width(`hbar-${id}`, health / 20 * 100);
-    width(`fbar-${id}`, food / 20 * 100);
-  });
-
-  socket.on('bot:position', ({ id, pos }) => {
-    if (pos) set(`pos-${id}`, `📍 ${pos.x} ${pos.y} ${pos.z}`);
-  });
-
-  socket.on('bot:log', ({ id, entry }) => {
-    const box = document.getElementById(`log-${id}`);
-    if (!box) return;
-    const d = document.createElement('div');
-    d.className = 'log-line';
-    d.textContent = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.Z]+\]\s?/, '');
-    box.appendChild(d);
-    box.scrollTop = box.scrollHeight;
-    while (box.children.length > 100) box.removeChild(box.firstChild);
-  });
-
-  socket.on('bot:inventory', ({ id, items }) => renderInventory(id, items));
-
-  socket.on('bot:tasks', ({ id, tasks }) => {
-    const t = tasks.find(t => t.status === 'running');
-    set(`task-${id}`, t ? `⚡ ${t.name}` : '');
-  });
-
-  socket.on('command:result', ({ botId, result }) => showResult(botId, `✓ ${result}`));
-}
-
-function logout() {
-  localStorage.removeItem('mcbot_pass');
-  if (socket) { socket.disconnect(); socket = null; }
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('lpass').value = '';
-}
+socket.on('bot:tasks', ({ id, tasks }) => {
+  const running = tasks.find(t => t.status === 'running');
+  const el = document.getElementById(`task-${id}`);
+  if (el) { el.textContent = running ? `⚡ ${running.name}` : ''; el.style.display = running ? 'block' : 'none'; }
+});
 
 function renderAll() {
   const arr = Object.values(bots);
   document.getElementById('no-bots').style.display = arr.length ? 'none' : 'block';
   arr.forEach(b => {
     if (!document.getElementById(`bot-${b.id}`))
-      document.getElementById('bot-container').appendChild(createCard(b));
-    updateCard(b);
+      document.getElementById('bot-container').insertAdjacentHTML('beforeend', cardHTML(b));
+    populateCard(b);
   });
 }
 
-function createCard(b) {
-  const div = document.createElement('div');
-  div.id = `bot-${b.id}`;
-  div.className = 'bot-item';
-  div.innerHTML = `
+function cardHTML(b) {
+  return `
+  <div class="bot-card" id="bot-${b.id}">
     <div class="bot-header">
       <div class="bot-name">${esc(b.username)}</div>
       <span class="badge ${b.status}" id="badge-${b.id}">${b.status}</span>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${esc(b.host)}:${b.port} &nbsp;•&nbsp; v${b.version}</div>
+    <div class="server-info">${esc(b.host)}:${b.port} &nbsp;•&nbsp; Minecraft ${b.version}</div>
 
-    <div class="bot-stats">
+    <div id="task-${b.id}" class="current-task" style="display:none"></div>
+
+    <div class="stats-grid">
       <div class="stat">
-        <div class="stat-v" id="h-${b.id}">0</div>
-        <div class="stat-l">Health ❤</div>
-        <div class="bar"><div class="bar-g" id="hbar-${b.id}" style="width:0%"></div></div>
+        <div class="stat-val" id="h-${b.id}">—</div>
+        <div class="stat-lbl">Health ❤️</div>
+        <div class="bar"><div class="bar-fill bar-green" id="hbar-${b.id}" style="width:0%"></div></div>
       </div>
       <div class="stat">
-        <div class="stat-v" id="f-${b.id}">0</div>
-        <div class="stat-l">Food 🍗</div>
-        <div class="bar"><div class="bar-y" id="fbar-${b.id}" style="width:0%"></div></div>
+        <div class="stat-val" id="f-${b.id}">—</div>
+        <div class="stat-lbl">Food 🍗</div>
+        <div class="bar"><div class="bar-fill bar-warn" id="fbar-${b.id}" style="width:0%"></div></div>
       </div>
       <div class="stat" style="grid-column:span 2">
-        <div class="stat-v" id="pos-${b.id}" style="font-size:12px;margin-top:4px">—</div>
-        <div class="stat-l">Position 📍</div>
+        <div class="stat-val" id="pos-${b.id}" style="font-size:14px;margin-top:6px">—</div>
+        <div class="stat-lbl">Position 📍</div>
       </div>
     </div>
 
-    <div class="bot-task" id="task-${b.id}"></div>
-
     <div class="divider"></div>
-
-    <div class="quick-cmds">
-      <span class="qbtn" onclick="qcmd('${b.id}','stop')">⏹ Stop</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','mine diamond 16')">💎 Mine Diamond</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','mine iron 32')">⛏ Mine Iron</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','mine coal 64')">🪨 Mine Coal</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','farm wheat')">🌾 Farm Wheat</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','farm carrots')">🥕 Farm Carrots</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','find village')">🏘 Find Village</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','find stronghold')">🏰 Find Stronghold</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','attack zombie')">🧟 Fight Zombies</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','attack skeleton')">💀 Fight Skeletons</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','build house')">🏠 Build House</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','organize')">📦 Organize Inv</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','deposit')">🗄 Deposit Items</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','eat')">🍖 Eat Food</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','waypoint save here')">📌 Save Waypoint</span>
-      <span class="qbtn" onclick="qcmd('${b.id}','status')">📊 Status</span>
-    </div>
-
-    <div class="cmd-row">
-      <input class="cmd-input" id="cmd-${b.id}" placeholder="Custom command... (e.g. mine diamond 64)" onkeydown="if(event.key==='Enter')sendCmd('${b.id}')"/>
-      <button class="btn btn-blue" onclick="sendCmd('${b.id}')">Send</button>
-    </div>
-    <div class="result-box" id="result-${b.id}"></div>
-
+    <div class="section-title">Live Logs 📋</div>
     <div class="log-box" id="log-${b.id}"></div>
 
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:14px;margin-bottom:6px">Inventory 🎒</div>
+    <div class="divider"></div>
+    <div class="section-title">Inventory 🎒</div>
     <div class="inv-grid" id="inv-${b.id}"></div>
-  `;
-  return div;
+  </div>`;
 }
 
-function updateCard(b) {
-  set(`h-${b.id}`, Math.round(b.health || 0));
-  set(`f-${b.id}`, Math.round(b.food || 0));
-  width(`hbar-${b.id}`, (b.health || 0) / 20 * 100);
-  width(`fbar-${b.id}`, (b.food || 0) / 20 * 100);
-  if (b.position) set(`pos-${b.id}`, `📍 ${b.position.x} ${b.position.y} ${b.position.z}`);
+function populateCard(b) {
+  setText(`h-${b.id}`, Math.round(b.health || 0));
+  setText(`f-${b.id}`, Math.round(b.food || 0));
+  setWidth(`hbar-${b.id}`, (b.health || 0) / 20 * 100);
+  setWidth(`fbar-${b.id}`, (b.food || 0) / 20 * 100);
+  if (b.position) setText(`pos-${b.id}`, `${Math.round(b.position.x)}, ${Math.round(b.position.y)}, ${Math.round(b.position.z)}`);
   renderInventory(b.id, b.inventory || []);
-  const logs = b.logs || [];
   const box = document.getElementById(`log-${b.id}`);
-  if (box && !box.children.length) {
-    logs.slice(-25).forEach(entry => {
+  if (box && !box.children.length && b.logs) {
+    b.logs.slice(-30).forEach(entry => {
+      const line = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.Z]+\]\s?/, '').trim();
       const d = document.createElement('div');
       d.className = 'log-line';
-      d.textContent = entry.replace(/\[\d{4}-\d{2}-\d{2}T[\d:.Z]+\]\s?/, '');
+      d.textContent = line;
       box.appendChild(d);
     });
     box.scrollTop = box.scrollHeight;
@@ -315,34 +225,13 @@ function renderInventory(id, items) {
   const slots = Array(18).fill(null);
   items.forEach(item => { if (item.slot < 18) slots[item.slot] = item; });
   grid.innerHTML = slots.map(item => item
-    ? `<div class="inv-cell" title="${item.name} ×${item.count}"><div class="cn">${item.count}</div><div class="nm">${item.name.replace(/_/g,' ').slice(0,9)}</div></div>`
-    : `<div class="inv-cell" style="opacity:.12">·</div>`
+    ? `<div class="inv-cell" title="${esc(item.name)} ×${item.count}"><div class="cn">${item.count}</div><div class="nm">${item.name.replace(/_/g,' ').slice(0,10)}</div></div>`
+    : `<div class="inv-cell inv-empty">·</div>`
   ).join('');
 }
 
-function qcmd(botId, cmd) {
-  socket.emit('bot:command', { botId, raw: cmd });
-  showResult(botId, `Sending: ${cmd}…`);
-}
-function sendCmd(botId) {
-  const inp = document.getElementById(`cmd-${botId}`);
-  const val = inp.value.trim();
-  if (!val) return;
-  socket.emit('bot:command', { botId, raw: val });
-  showResult(botId, `Sending: ${val}…`);
-  inp.value = '';
-}
-function showResult(botId, msg) {
-  const el = document.getElementById(`result-${botId}`);
-  if (!el) return;
-  el.textContent = msg;
-  el.style.display = 'block';
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.style.display = 'none', 6000);
-}
-
-function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-function width(id, pct) { const el = document.getElementById(id); if (el) el.style.width = pct + '%'; }
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function setWidth(id, pct) { const el = document.getElementById(id); if (el) el.style.width = pct + '%'; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
 </body>

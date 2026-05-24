@@ -28,6 +28,7 @@ startMemoryMonitor();
 
 const DASHBOARD_PASSWORD = process.env["DASHBOARD_PASSWORD"] || "admin";
 const authenticatedSockets = new Set<string>();
+const readonlySockets = new Set<string>();
 
 app.use(
   pinoHttp({
@@ -75,10 +76,10 @@ io.use((socket, next) => {
   const pass = socket.handshake.auth["password"] as string | undefined;
   if (pass === DASHBOARD_PASSWORD) {
     authenticatedSockets.add(socket.id);
-    next();
   } else {
-    next(new Error("Unauthorized"));
+    readonlySockets.add(socket.id);
   }
+  next();
 });
 
 io.on("connection", (socket) => {
@@ -88,7 +89,10 @@ io.on("connection", (socket) => {
 
   socket.emit("bots:all", manager.getAllStats());
 
+  const isAdmin = authenticatedSockets.has(socket.id);
+
   socket.on("bot:command", async (data: { botId: string; raw?: string; command?: string; args?: string[]; amount?: number }) => {
+    if (!isAdmin) { socket.emit("command:error", { error: "Access denied" }); return; }
     try {
       const result = data.raw
         ? await manager.getBot(data.botId)?.executeCommand(data.raw.split(" ")[0]!, data.raw.split(" ").slice(1), undefined)
@@ -100,21 +104,25 @@ io.on("connection", (socket) => {
   });
 
   socket.on("bot:create", async (config) => {
+    if (!isAdmin) return;
     const bot = manager.addBot(config);
     socket.emit("bot:created", { id: bot.id });
     io.emit("bots:all", manager.getAllStats());
   });
 
   socket.on("bot:remove", (id: string) => {
+    if (!isAdmin) return;
     manager.removeBot(id);
     io.emit("bots:all", manager.getAllStats());
   });
 
   socket.on("bot:connect", async (id: string) => {
+    if (!isAdmin) return;
     await manager.connectBot(id).catch(() => {});
   });
 
   socket.on("bot:disconnect", (id: string) => {
+    if (!isAdmin) return;
     manager.disconnectBot(id);
   });
 
