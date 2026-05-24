@@ -339,6 +339,10 @@ document.getElementById('login-pass').addEventListener('keydown', e => {
   if (e.key === 'Enter') login();
 });
 
+window.addEventListener('load', () => {
+  initSocket('admin');
+});
+
 function initSocket(password) {
   socket = io({ auth: { password }, path: '/api/socket.io/' });
 
