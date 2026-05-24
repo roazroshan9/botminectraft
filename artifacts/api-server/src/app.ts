@@ -73,7 +73,7 @@ app.use("/api", router);
 
 io.use((socket, next) => {
   const pass = socket.handshake.auth["password"] as string | undefined;
-  if (pass === DASHBOARD_PASSWORD || DASHBOARD_PASSWORD === "admin") {
+  if (pass === DASHBOARD_PASSWORD) {
     authenticatedSockets.add(socket.id);
     next();
   } else {

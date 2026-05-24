@@ -339,22 +339,25 @@ document.getElementById('login-pass').addEventListener('keydown', e => {
   if (e.key === 'Enter') login();
 });
 
-window.addEventListener('load', () => {
-  initSocket('admin');
-});
+const _saved = localStorage.getItem('mcbot_pass');
+if (_saved) initSocket(_saved);
 
 function initSocket(password) {
+  if (socket) { socket.disconnect(); socket = null; }
   socket = io({ auth: { password }, path: '/api/socket.io/' });
 
   socket.on('connect', () => {
     setWsStatus(true);
+    localStorage.setItem('mcbot_pass', password);
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
   });
 
-  socket.on('connect_error', (err) => {
-    document.getElementById('login-error').textContent = 'Wrong password or connection error';
+  socket.on('connect_error', () => {
+    localStorage.removeItem('mcbot_pass');
+    document.getElementById('login-error').textContent = 'Wrong password!';
     setWsStatus(false);
+    if (socket) { socket.disconnect(); socket = null; }
   });
 
   socket.on('disconnect', () => setWsStatus(false));
