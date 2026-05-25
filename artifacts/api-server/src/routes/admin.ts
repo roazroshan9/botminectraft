@@ -163,11 +163,29 @@ router.post("/support/:userId/read", async (req, res) => {
 // POST /api/admin/seed
 // Creates the initial admin user if one doesn't already exist.
 // Protected by requireAdmin (x-admin-password header or adminPassword body field).
+// Rate-limited: 1 call per IP per hour to prevent abuse in production.
 //
 // Body (optional — overrides defaults):
 //   { "username": "admin", "email": "you@example.com", "password": "s3cur3!" }
 
+const SEED_RATE_LIMIT_MS = 60 * 60 * 1000; // 1 hour
+const seedLastCalledAt = new Map<string, number>();
+
 router.post("/seed", async (req, res) => {
+  const ip = req.ip ?? "unknown";
+  const last = seedLastCalledAt.get(ip) ?? 0;
+  const elapsed = Date.now() - last;
+
+  if (elapsed < SEED_RATE_LIMIT_MS) {
+    const retryAfterSec = Math.ceil((SEED_RATE_LIMIT_MS - elapsed) / 1000);
+    res.setHeader("Retry-After", String(retryAfterSec));
+    res.status(429).json({
+      error: "Rate limit exceeded. The seed endpoint may only be called once per hour per IP.",
+      retryAfterSeconds: retryAfterSec,
+    });
+    return;
+  }
+  seedLastCalledAt.set(ip, Date.now());
   try {
     const {
       username = "admin",
