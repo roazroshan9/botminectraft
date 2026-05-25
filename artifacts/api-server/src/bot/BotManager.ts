@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { MinecraftBot } from "./MinecraftBot.js";
-import { BotRepo, UserBotRepo } from "../database/Database.js";
+import { BotRepo, UserBotRepo, IS_POSTGRES } from "../database/Database.js";
 import { logger } from "../lib/logger.js";
 import type { BotConfig } from "../config/defaults.js";
 
@@ -23,6 +23,10 @@ export class BotManager extends EventEmitter {
   }
 
   private loadSavedBots() {
+    if (IS_POSTGRES) {
+      logger.info("PostgreSQL mode — skipping legacy SQLite bot auto-load");
+      return;
+    }
     try {
       const saved = BotRepo.getAll() as Array<{
         id: string; username: string; host: string; port: number;
@@ -67,7 +71,7 @@ export class BotManager extends EventEmitter {
     ownerUsername = "User",
   ): MinecraftBot {
     const runtimeId = randomUUID();
-    UserBotRepo.updateStatus(dbBotId, "connecting", null, runtimeId);
+    UserBotRepo.updateStatus(dbBotId, "connecting", null, runtimeId).catch(() => {});
 
     const bot = this.createBot(runtimeId, config, ownerUsername);
     this.botOwners.set(runtimeId, userId);
@@ -75,7 +79,7 @@ export class BotManager extends EventEmitter {
     this.botUsernames.set(runtimeId, ownerUsername);
 
     bot.on("status", (status: string) => {
-      UserBotRepo.updateStatus(dbBotId, status, bot.taskQueue.getCurrent()?.name ?? null, runtimeId);
+      UserBotRepo.updateStatus(dbBotId, status, bot.taskQueue.getCurrent()?.name ?? null, runtimeId).catch(() => {});
     });
 
     if (config.autoConnect !== false) {
@@ -143,7 +147,7 @@ export class BotManager extends EventEmitter {
     this.bots.delete(id);
     const dbId = this.botDbIds.get(id);
     if (dbId) {
-      UserBotRepo.updateStatus(dbId, "offline", null, null);
+      UserBotRepo.updateStatus(dbId, "offline", null, null).catch(() => {});
       this.botDbIds.delete(id);
     }
     this.botOwners.delete(id);

@@ -9,7 +9,7 @@ import { createServer } from "node:http";
 import { Server as SocketIOServer } from "socket.io";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
-import { initDatabase } from "./database/Database.js";
+import { initDatabase, IS_POSTGRES } from "./database/Database.js";
 import { BotManager } from "./bot/BotManager.js";
 import { startMemoryMonitor, getMemoryStats } from "./utils/memory.js";
 import { DEFAULT_CONFIG } from "./config/defaults.js";
@@ -33,7 +33,7 @@ export const io = new SocketIOServer(httpServer, {
   path: "/api/socket.io/",
 });
 
-initDatabase();
+if (!IS_POSTGRES) initDatabase();
 startMemoryMonitor();
 
 const DASHBOARD_PASSWORD = process.env["DASHBOARD_PASSWORD"] || "admin";

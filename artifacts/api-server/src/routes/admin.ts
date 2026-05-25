@@ -3,92 +3,84 @@ import { requireAdmin } from "../middleware/requireAdmin.js";
 import { UserRepo, UserBotRepo, SupportRepo, PaymentRepo } from "../database/Database.js";
 import { BotManager } from "../bot/BotManager.js";
 import { io } from "../app.js";
-import { getDatabase } from "../database/Database.js";
 
 const router = Router();
 router.use(requireAdmin);
 
 // ─── Stats / Overview ────────────────────────────────────────────────────────
 
-router.get("/stats", (_req, res) => {
-  const manager = BotManager.getInstance();
-  const allBots = manager.getAllStats();
-  const users = UserRepo.getAll();
+router.get("/stats", async (_req, res) => {
+  try {
+    const manager = BotManager.getInstance();
+    const allBots = manager.getAllStats();
+    const [users, revenue, mrr, recentPayments, recentUsers, unreadSupport] = await Promise.all([
+      UserRepo.getAll(),
+      PaymentRepo.getRevenue(),
+      PaymentRepo.getMrr(),
+      PaymentRepo.getRecentWithUser(8),
+      UserRepo.getRecent(8),
+      SupportRepo.getUnreadCount(),
+    ]);
 
-  // Payment revenue from DB
-  const db = getDatabase();
-  const revenueRow = db.prepare(
-    "SELECT COALESCE(SUM(amount),0) as total FROM payments WHERE status='completed'"
-  ).get() as { total: number };
-  const mrrRow = db.prepare(`
-    SELECT COALESCE(SUM(amount),0) as mrr FROM payments
-    WHERE status='completed' AND timestamp >= date('now','-30 days')
-  `).get() as { mrr: number };
-  const recentPayments = db.prepare(`
-    SELECT p.*, u.username FROM payments p
-    JOIN users u ON p.user_id = u.id
-    ORDER BY p.timestamp DESC LIMIT 8
-  `).all() as Array<Record<string, unknown>>;
-  const recentUsers = db.prepare(
-    "SELECT id, username, email, tier, created_at FROM users ORDER BY created_at DESC LIMIT 8"
-  ).all() as Array<Record<string, unknown>>;
-
-  res.json({
-    totalUsers: users.length,
-    totalBots: allBots.length,
-    onlineBots: allBots.filter(b => b.status === "connected").length,
-    unreadSupport: SupportRepo.getUnreadCount(),
-    usersByTier: {
-      free:       users.filter(u => u.tier === "free").length,
-      premium:    users.filter(u => u.tier === "premium").length,
-      enterprise: users.filter(u => u.tier === "enterprise").length,
-    },
-    revenue: {
-      total: revenueRow.total,
-      mrr:   mrrRow.mrr,
-    },
-    recentPayments,
-    recentUsers,
-  });
+    res.json({
+      totalUsers: users.length,
+      totalBots: allBots.length,
+      onlineBots: allBots.filter(b => b.status === "connected").length,
+      unreadSupport,
+      usersByTier: {
+        free:       users.filter(u => u.tier === "free").length,
+        premium:    users.filter(u => u.tier === "premium").length,
+        enterprise: users.filter(u => u.tier === "enterprise").length,
+      },
+      revenue: { total: revenue, mrr },
+      recentPayments,
+      recentUsers,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load stats" });
+  }
 });
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 
-router.get("/users", (_req, res) => {
-  const users = UserRepo.getAll();
-  const enriched = users.map(u => ({
-    ...u,
-    botCount: UserBotRepo.countByUser(u.id),
-    payments: PaymentRepo.getByUser(u.id),
-  }));
-  res.json({ users: enriched, total: enriched.length });
+router.get("/users", async (_req, res) => {
+  try {
+    const users = await UserRepo.getAll();
+    const enriched = await Promise.all(users.map(async u => ({
+      ...u,
+      botCount: await UserBotRepo.countByUser(u.id),
+      payments: await PaymentRepo.getByUser(u.id),
+    })));
+    res.json({ users: enriched, total: enriched.length });
+  } catch {
+    res.status(500).json({ error: "Failed to load users" });
+  }
 });
 
-router.put("/users/:id/tier", (req, res) => {
+router.put("/users/:id/tier", async (req, res) => {
   const id = parseInt(req.params["id"]!, 10);
   const { tier } = req.body as { tier: string };
   const valid = ["free", "premium", "enterprise"];
   if (!valid.includes(tier)) { res.status(400).json({ error: `tier must be one of: ${valid.join(", ")}` }); return; }
-  const user = UserRepo.getById(id);
+  const user = await UserRepo.getById(id);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  UserRepo.setTier(id, tier);
-  // Broadcast tier change so any active user socket sees it immediately
+  await UserRepo.setTier(id, tier);
   io.to(`user:${user.id}`).emit("account:tier_changed", { tier });
   res.json({ success: true, userId: id, tier });
 });
 
-router.put("/users/:id/active", (req, res) => {
+router.put("/users/:id/active", async (req, res) => {
   const id = parseInt(req.params["id"]!, 10);
   const { active } = req.body as { active: boolean };
-  const user = UserRepo.getById(id);
+  const user = await UserRepo.getById(id);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  UserRepo.setActive(id, active);
+  await UserRepo.setActive(id, active);
   res.json({ success: true, userId: id, active });
 });
 
-router.get("/users/:id/bots", (req, res) => {
+router.get("/users/:id/bots", async (req, res) => {
   const id = parseInt(req.params["id"]!, 10);
-  const bots = UserBotRepo.getByUser(id);
+  const bots = await UserBotRepo.getByUser(id);
   const manager = BotManager.getInstance();
   const enriched = bots.map(b => {
     const runtimeId = b.runtime_id;
@@ -100,41 +92,47 @@ router.get("/users/:id/bots", (req, res) => {
 
 // ─── Support Hub ─────────────────────────────────────────────────────────────
 
-router.get("/support", (_req, res) => {
-  const all = SupportRepo.getAllThreads();
-  const byUser: Record<number, {
-    userId: number; username: string; unreadCount: number;
-    lastMessage: string; lastTime: string;
-    messages: typeof all;
-  }> = {};
+router.get("/support", async (_req, res) => {
+  try {
+    const all = await SupportRepo.getAllThreads();
+    const unreadTotal = await SupportRepo.getUnreadCount();
 
-  for (const msg of all) {
-    if (!byUser[msg.user_id]) {
-      byUser[msg.user_id] = {
-        userId: msg.user_id,
-        username: msg.username || "Unknown",
-        unreadCount: 0,
-        lastMessage: msg.message,
-        lastTime: msg.timestamp,
-        messages: [],
-      };
+    const byUser: Record<number, {
+      userId: number; username: string; unreadCount: number;
+      lastMessage: string; lastTime: string | Date;
+      messages: typeof all;
+    }> = {};
+
+    for (const msg of all) {
+      if (!byUser[msg.user_id]) {
+        byUser[msg.user_id] = {
+          userId: msg.user_id,
+          username: msg.username || "Unknown",
+          unreadCount: 0,
+          lastMessage: msg.message,
+          lastTime: msg.timestamp,
+          messages: [],
+        };
+      }
+      byUser[msg.user_id]!.messages.push(msg);
+      if (msg.sender === "user" && !msg.is_read) byUser[msg.user_id]!.unreadCount++;
     }
-    byUser[msg.user_id]!.messages.push(msg);
-    if (msg.sender === "user" && !msg.is_read) byUser[msg.user_id]!.unreadCount++;
-  }
 
-  const threads = Object.values(byUser).sort(
-    (a, b) => new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()
-  );
-  res.json({ threads, unreadTotal: SupportRepo.getUnreadCount() });
+    const threads = Object.values(byUser).sort(
+      (a, b) => new Date(b.lastTime as string).getTime() - new Date(a.lastTime as string).getTime()
+    );
+    res.json({ threads, unreadTotal });
+  } catch {
+    res.status(500).json({ error: "Failed to load support threads" });
+  }
 });
 
-router.get("/support/:userId", (req, res) => {
+router.get("/support/:userId", async (req, res) => {
   const userId = parseInt(req.params["userId"]!, 10);
-  const user = UserRepo.getById(userId);
+  const user = await UserRepo.getById(userId);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  const messages = SupportRepo.getThreadsByUser(userId);
-  SupportRepo.markRead(userId);
+  const messages = await SupportRepo.getThreadsByUser(userId);
+  await SupportRepo.markRead(userId);
   io.to(`user:${userId}`).emit("support:read");
   res.json({
     messages,
@@ -142,22 +140,21 @@ router.get("/support/:userId", (req, res) => {
   });
 });
 
-router.post("/support/:userId/reply", (req, res) => {
+router.post("/support/:userId/reply", async (req, res) => {
   const userId = parseInt(req.params["userId"]!, 10);
   const { message } = req.body as { message: string };
   if (!message?.trim()) { res.status(400).json({ error: "message is required" }); return; }
-  const user = UserRepo.getById(userId);
+  const user = await UserRepo.getById(userId);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  const msg = SupportRepo.insert(userId, message.trim(), "admin");
+  const msg = await SupportRepo.insert(userId, message.trim(), "admin");
   io.to(`user:${userId}`).emit("support:message", { ...msg, fromAdmin: true });
-  // Notify all admin sockets of the new reply
   io.emit("support:admin_reply", { userId, username: user.username, message: msg });
   res.json({ message: msg });
 });
 
-router.post("/support/:userId/read", (req, res) => {
+router.post("/support/:userId/read", async (req, res) => {
   const userId = parseInt(req.params["userId"]!, 10);
-  SupportRepo.markRead(userId);
+  await SupportRepo.markRead(userId);
   res.json({ success: true });
 });
 

@@ -1,0 +1,105 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── SaaS Models ─────────────────────────────────────────────────────────────
+
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  email         String   @unique
+  password_hash String
+  tier          String   @default("free")
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  user_bots             UserBot[]
+  payments              Payment[]
+  support_messages      SupportMessage[]
+  password_reset_tokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+model UserBot {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  bot_name       String
+  server_ip      String
+  server_port    Int      @default(25565)
+  mc_version     String   @default("auto")
+  auth_type      String   @default("offline")
+  auth_data_json String?
+  status         String   @default("offline")
+  current_task   String?
+  runtime_id     String?
+  created_at     DateTime @default(now())
+
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  live_logs LiveLog[]
+
+  @@index([user_id])
+  @@map("user_bots")
+}
+
+model LiveLog {
+  id        Int      @id @default(autoincrement())
+  bot_id    Int
+  log_type  String   @default("info")
+  message   String
+  timestamp DateTime @default(now())
+
+  user_bot UserBot @relation(fields: [bot_id], references: [id], onDelete: Cascade)
+
+  @@index([bot_id])
+  @@map("live_logs")
+}
+
+model SupportMessage {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  sender    String   @default("user")
+  message   String
+  is_read   Boolean  @default(false)
+  timestamp DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("support_messages")
+}
+
+model Payment {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  amount         Float
+  currency       String   @default("USD")
+  status         String   @default("pending")
+  transaction_id String?
+  tier_granted   String
+  timestamp      DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("payments")
+}
+
+model PasswordResetToken {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  token_hash String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("password_reset_tokens")
+}

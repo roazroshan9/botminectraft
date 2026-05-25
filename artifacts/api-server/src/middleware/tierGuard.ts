@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { getTier } from "../config/tiers.js";
-import { getDatabase } from "../database/Database.js";
+import { UserBotRepo } from "../database/Database.js";
 
 export function tierGuard(feature: "microsoftAuth" | "liveSupport") {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -26,20 +26,19 @@ export function botSlotGuard(req: Request, res: Response, next: NextFunction): v
 
   const tier = req.user?.tier ?? "free";
   const cfg = getTier(tier);
-  const db = getDatabase();
 
-  const row = db
-    .prepare("SELECT COUNT(*) as cnt FROM user_bots WHERE user_id = ? AND status != 'deleted'")
-    .get(userId) as { cnt: number };
-
-  if (row.cnt >= cfg.botSlots) {
-    res.status(403).json({
-      error: `Bot slot limit reached (${cfg.botSlots} on ${tier} plan)`,
-      limit: cfg.botSlots,
-      current: row.cnt,
-      upgrade: tier === "free" ? "premium" : "enterprise",
-    });
-    return;
-  }
-  next();
+  UserBotRepo.countByUser(userId).then(count => {
+    if (count >= cfg.botSlots) {
+      res.status(403).json({
+        error: `Bot slot limit reached (${cfg.botSlots} on ${tier} plan)`,
+        limit: cfg.botSlots,
+        current: count,
+        upgrade: tier === "free" ? "premium" : "enterprise",
+      });
+      return;
+    }
+    next();
+  }).catch(() => {
+    res.status(500).json({ error: "Failed to check bot slot limit" });
+  });
 }

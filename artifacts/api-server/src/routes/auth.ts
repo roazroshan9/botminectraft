@@ -35,17 +35,17 @@ router.post("/register", async (req, res) => {
       return;
     }
 
-    if (UserRepo.getByEmail(email.trim().toLowerCase())) {
+    if (await UserRepo.getByEmail(email.trim().toLowerCase())) {
       res.status(409).json({ error: "Email already registered" });
       return;
     }
-    if (UserRepo.getByUsername(username.trim())) {
+    if (await UserRepo.getByUsername(username.trim())) {
       res.status(409).json({ error: "Username already taken" });
       return;
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = UserRepo.create({
+    const user = await UserRepo.create({
       username: username.trim(),
       email: email.trim().toLowerCase(),
       passwordHash,
@@ -77,7 +77,7 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    const user = UserRepo.getByEmail(email.trim().toLowerCase());
+    const user = await UserRepo.getByEmail(email.trim().toLowerCase());
     if (!user) {
       const r = recordFailure(ip, "user");
       const msg = r.locked
@@ -87,7 +87,7 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    const valid = await bcrypt.compare(password, user.password_hash as string);
+    const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       const r = recordFailure(ip, "user");
       const msg = r.locked
@@ -104,12 +104,7 @@ router.post("/login", async (req, res) => {
 
     clearAttempts(ip, "user");
 
-    const token = signToken({
-      userId: user.id as number,
-      username: user.username as string,
-      email: user.email as string,
-      tier: user.tier as string,
-    });
+    const token = signToken({ userId: user.id, username: user.username, email: user.email, tier: user.tier });
     res.cookie(COOKIE_NAME, token, COOKIE_OPTS);
     res.json({ success: true, token, user: { id: user.id, username: user.username, email: user.email, tier: user.tier } });
   } catch {
@@ -122,8 +117,8 @@ router.post("/logout", (_req, res) => {
   res.json({ success: true });
 });
 
-router.get("/me", requireAuth, (req, res) => {
-  const fresh = UserRepo.getById(req.user!.userId);
+router.get("/me", requireAuth, async (req, res) => {
+  const fresh = await UserRepo.getById(req.user!.userId);
   if (!fresh) { res.status(404).json({ error: "User not found" }); return; }
   res.json({
     user: {
@@ -146,11 +141,11 @@ router.post("/forgot-password", async (req, res) => {
   const genericOk = { success: true, message: "If that email is registered, a reset code has been sent." };
 
   try {
-    const user = UserRepo.getByEmail(email.trim().toLowerCase());
+    const user = await UserRepo.getByEmail(email.trim().toLowerCase());
     if (!user) { res.json(genericOk); return; }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
-    PasswordResetRepo.create(user.id, hashOtp(otp));
+    await PasswordResetRepo.create(user.id, hashOtp(otp));
     await sendPasswordResetEmail(user.email, user.username, otp);
 
     res.json(genericOk);
@@ -172,22 +167,22 @@ router.post("/reset-password", async (req, res) => {
   }
 
   try {
-    const user = UserRepo.getByEmail(email.trim().toLowerCase());
+    const user = await UserRepo.getByEmail(email.trim().toLowerCase());
     if (!user) {
       res.status(400).json({ error: "Invalid or expired reset code" });
       return;
     }
 
     const tokenHash = hashOtp(otp.trim());
-    const record = PasswordResetRepo.findValid(user.id, tokenHash);
+    const record = await PasswordResetRepo.findValid(user.id, tokenHash);
     if (!record) {
       res.status(400).json({ error: "Invalid or expired reset code. Please request a new one." });
       return;
     }
 
     const hash = await bcrypt.hash(newPassword, 12);
-    UserRepo.resetPassword(user.id, hash);
-    PasswordResetRepo.markUsed(record.id);
+    await UserRepo.resetPassword(user.id, hash);
+    await PasswordResetRepo.markUsed(record.id);
     clearAttempts(email.trim().toLowerCase(), "user");
 
     res.json({ success: true, message: "Password reset successfully. You can now sign in." });

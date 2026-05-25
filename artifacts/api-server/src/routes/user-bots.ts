@@ -10,10 +10,10 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/profile", (req, res) => {
+router.get("/profile", async (req, res) => {
   const user = req.user!;
   const tier = getTier(user.tier);
-  const botCount = UserBotRepo.countByUser(user.userId);
+  const botCount = await UserBotRepo.countByUser(user.userId);
   res.json({
     userId: user.userId,
     username: user.username,
@@ -26,9 +26,9 @@ router.get("/profile", (req, res) => {
   });
 });
 
-router.get("/bots", (req, res) => {
+router.get("/bots", async (req, res) => {
   const userId = req.user!.userId;
-  const dbBots = UserBotRepo.getByUser(userId);
+  const dbBots = await UserBotRepo.getByUser(userId);
   const manager = BotManager.getInstance();
 
   const bots = dbBots.map(row => {
@@ -52,11 +52,11 @@ router.get("/bots", (req, res) => {
   res.json({ bots });
 });
 
-router.post("/bots", (req, res) => {
+router.post("/bots", async (req, res) => {
   const user = req.user!;
   const tier = getTier(user.tier);
 
-  const currentCount = UserBotRepo.countByUser(user.userId);
+  const currentCount = await UserBotRepo.countByUser(user.userId);
   if (currentCount >= tier.botSlots) {
     res.status(403).json({
       error: `Your ${tier.name} plan allows ${tier.botSlots} bot(s). Upgrade to add more.`,
@@ -86,7 +86,7 @@ router.post("/bots", (req, res) => {
     return;
   }
 
-  const row = UserBotRepo.create({
+  const row = await UserBotRepo.create({
     userId: user.userId,
     botName,
     serverIp,
@@ -98,10 +98,10 @@ router.post("/bots", (req, res) => {
   res.status(201).json({ bot: row, message: "Bot created. Use /connect to start it." });
 });
 
-router.post("/bots/:id/connect", (req, res) => {
+router.post("/bots/:id/connect", async (req, res) => {
   const user = req.user!;
   const dbBotId = parseInt(req.params["id"]!, 10);
-  const row = UserBotRepo.getById(dbBotId);
+  const row = await UserBotRepo.getById(dbBotId);
 
   if (!row || row.user_id !== user.userId) {
     res.status(404).json({ error: "Bot not found" });
@@ -126,10 +126,10 @@ router.post("/bots/:id/connect", (req, res) => {
   res.json({ runtimeId: bot.id, message: "Bot connecting..." });
 });
 
-router.post("/bots/:id/disconnect", (req, res) => {
+router.post("/bots/:id/disconnect", async (req, res) => {
   const user = req.user!;
   const dbBotId = parseInt(req.params["id"]!, 10);
-  const row = UserBotRepo.getById(dbBotId);
+  const row = await UserBotRepo.getById(dbBotId);
 
   if (!row || row.user_id !== user.userId) {
     res.status(404).json({ error: "Bot not found" });
@@ -142,14 +142,14 @@ router.post("/bots/:id/disconnect", (req, res) => {
     const bot = manager.getBot(runtimeId);
     if (bot) bot.disconnect(false);
   }
-  UserBotRepo.updateStatus(dbBotId, "offline", null, null);
+  await UserBotRepo.updateStatus(dbBotId, "offline", null, null);
   res.json({ message: "Bot disconnected" });
 });
 
 router.post("/bots/:id/command", async (req, res) => {
   const user = req.user!;
   const dbBotId = parseInt(req.params["id"]!, 10);
-  const row = UserBotRepo.getById(dbBotId);
+  const row = await UserBotRepo.getById(dbBotId);
 
   if (!row || row.user_id !== user.userId) {
     res.status(404).json({ error: "Bot not found" });
@@ -185,10 +185,10 @@ router.post("/bots/:id/command", async (req, res) => {
   }
 });
 
-router.get("/bots/:id/logs", (req, res) => {
+router.get("/bots/:id/logs", async (req, res) => {
   const user = req.user!;
   const dbBotId = parseInt(req.params["id"]!, 10);
-  const row = UserBotRepo.getById(dbBotId);
+  const row = await UserBotRepo.getById(dbBotId);
 
   if (!row || row.user_id !== user.userId) {
     res.status(404).json({ error: "Bot not found" });
@@ -198,15 +198,15 @@ router.get("/bots/:id/logs", (req, res) => {
   const manager = BotManager.getInstance();
   const runtimeId = row.runtime_id ?? manager.getUserBotRuntimeId(dbBotId);
   const runtimeLogs = runtimeId ? manager.getBot(runtimeId)?.getLogs() ?? [] : [];
-  const dbLogs = LiveLogRepo.getByBot(dbBotId, 200).map(l => `[${l.timestamp}] ${l.message}`).reverse();
+  const dbLogs = (await LiveLogRepo.getByBot(dbBotId, 200)).map(l => `[${l.timestamp}] ${l.message}`).reverse();
 
   res.json({ logs: [...dbLogs, ...runtimeLogs].slice(-200) });
 });
 
-router.delete("/bots/:id", (req, res) => {
+router.delete("/bots/:id", async (req, res) => {
   const user = req.user!;
   const dbBotId = parseInt(req.params["id"]!, 10);
-  const row = UserBotRepo.getById(dbBotId);
+  const row = await UserBotRepo.getById(dbBotId);
 
   if (!row || row.user_id !== user.userId) {
     res.status(404).json({ error: "Bot not found" });
@@ -217,23 +217,23 @@ router.delete("/bots/:id", (req, res) => {
   const runtimeId = row.runtime_id ?? manager.getUserBotRuntimeId(dbBotId);
   if (runtimeId) manager.removeBot(runtimeId, false);
 
-  UserBotRepo.delete(dbBotId);
+  await UserBotRepo.delete(dbBotId);
   res.json({ message: "Bot deleted" });
 });
 
 // ─── Support ──────────────────────────────────────────────────────────────────
 
-router.get("/support", (req, res) => {
+router.get("/support", async (req, res) => {
   const userId = req.user!.userId;
-  const messages = SupportRepo.getThreadsByUser(userId);
+  const messages = await SupportRepo.getThreadsByUser(userId);
   res.json({ messages });
 });
 
-router.post("/support", (req, res) => {
+router.post("/support", async (req, res) => {
   const userId = req.user!.userId;
   const { message } = req.body as { message: string };
   if (!message?.trim()) { res.status(400).json({ error: "message is required" }); return; }
-  const msg = SupportRepo.insert(userId, message.trim(), "user");
+  const msg = await SupportRepo.insert(userId, message.trim(), "user");
   io.emit("support:new_message", { userId, username: req.user!.username, message: msg });
   res.status(201).json({ message: msg });
 });
