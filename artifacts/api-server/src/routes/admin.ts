@@ -1,11 +1,56 @@
 import { Router } from "express";
 import { requireAdmin } from "../middleware/requireAdmin.js";
-import { UserRepo, UserBotRepo, SupportRepo, PaymentRepo, LiveLogRepo } from "../database/Database.js";
+import { UserRepo, UserBotRepo, SupportRepo, PaymentRepo } from "../database/Database.js";
 import { BotManager } from "../bot/BotManager.js";
 import { io } from "../app.js";
+import { getDatabase } from "../database/Database.js";
 
 const router = Router();
 router.use(requireAdmin);
+
+// ─── Stats / Overview ────────────────────────────────────────────────────────
+
+router.get("/stats", (_req, res) => {
+  const manager = BotManager.getInstance();
+  const allBots = manager.getAllStats();
+  const users = UserRepo.getAll();
+
+  // Payment revenue from DB
+  const db = getDatabase();
+  const revenueRow = db.prepare(
+    "SELECT COALESCE(SUM(amount),0) as total FROM payments WHERE status='completed'"
+  ).get() as { total: number };
+  const mrrRow = db.prepare(`
+    SELECT COALESCE(SUM(amount),0) as mrr FROM payments
+    WHERE status='completed' AND timestamp >= date('now','-30 days')
+  `).get() as { mrr: number };
+  const recentPayments = db.prepare(`
+    SELECT p.*, u.username FROM payments p
+    JOIN users u ON p.user_id = u.id
+    ORDER BY p.timestamp DESC LIMIT 8
+  `).all() as Array<Record<string, unknown>>;
+  const recentUsers = db.prepare(
+    "SELECT id, username, email, tier, created_at FROM users ORDER BY created_at DESC LIMIT 8"
+  ).all() as Array<Record<string, unknown>>;
+
+  res.json({
+    totalUsers: users.length,
+    totalBots: allBots.length,
+    onlineBots: allBots.filter(b => b.status === "connected").length,
+    unreadSupport: SupportRepo.getUnreadCount(),
+    usersByTier: {
+      free:       users.filter(u => u.tier === "free").length,
+      premium:    users.filter(u => u.tier === "premium").length,
+      enterprise: users.filter(u => u.tier === "enterprise").length,
+    },
+    revenue: {
+      total: revenueRow.total,
+      mrr:   mrrRow.mrr,
+    },
+    recentPayments,
+    recentUsers,
+  });
+});
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 
@@ -14,6 +59,7 @@ router.get("/users", (_req, res) => {
   const enriched = users.map(u => ({
     ...u,
     botCount: UserBotRepo.countByUser(u.id),
+    payments: PaymentRepo.getByUser(u.id),
   }));
   res.json({ users: enriched, total: enriched.length });
 });
@@ -26,6 +72,8 @@ router.put("/users/:id/tier", (req, res) => {
   const user = UserRepo.getById(id);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
   UserRepo.setTier(id, tier);
+  // Broadcast tier change so any active user socket sees it immediately
+  io.to(`user:${user.id}`).emit("account:tier_changed", { tier });
   res.json({ success: true, userId: id, tier });
 });
 
@@ -54,13 +102,17 @@ router.get("/users/:id/bots", (req, res) => {
 
 router.get("/support", (_req, res) => {
   const all = SupportRepo.getAllThreads();
-  // Group by user, latest message first per user
-  const byUser: Record<number, { userId: number; username: string; unreadCount: number; lastMessage: string; lastTime: string; messages: typeof all }> = {};
+  const byUser: Record<number, {
+    userId: number; username: string; unreadCount: number;
+    lastMessage: string; lastTime: string;
+    messages: typeof all;
+  }> = {};
+
   for (const msg of all) {
     if (!byUser[msg.user_id]) {
       byUser[msg.user_id] = {
         userId: msg.user_id,
-        username: (msg as unknown as Record<string, string>)["username"] || "Unknown",
+        username: msg.username || "Unknown",
         unreadCount: 0,
         lastMessage: msg.message,
         lastTime: msg.timestamp,
@@ -70,11 +122,11 @@ router.get("/support", (_req, res) => {
     byUser[msg.user_id]!.messages.push(msg);
     if (msg.sender === "user" && !msg.is_read) byUser[msg.user_id]!.unreadCount++;
   }
-  const threads = Object.values(byUser).sort((a, b) =>
-    new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()
+
+  const threads = Object.values(byUser).sort(
+    (a, b) => new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime()
   );
-  const unreadTotal = SupportRepo.getUnreadCount();
-  res.json({ threads, unreadTotal });
+  res.json({ threads, unreadTotal: SupportRepo.getUnreadCount() });
 });
 
 router.get("/support/:userId", (req, res) => {
@@ -84,7 +136,10 @@ router.get("/support/:userId", (req, res) => {
   const messages = SupportRepo.getThreadsByUser(userId);
   SupportRepo.markRead(userId);
   io.to(`user:${userId}`).emit("support:read");
-  res.json({ messages, user: { id: user.id, username: user.username, email: user.email, tier: user.tier } });
+  res.json({
+    messages,
+    user: { id: user.id, username: user.username, email: user.email, tier: user.tier },
+  });
 });
 
 router.post("/support/:userId/reply", (req, res) => {
@@ -95,6 +150,8 @@ router.post("/support/:userId/reply", (req, res) => {
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
   const msg = SupportRepo.insert(userId, message.trim(), "admin");
   io.to(`user:${userId}`).emit("support:message", { ...msg, fromAdmin: true });
+  // Notify all admin sockets of the new reply
+  io.emit("support:admin_reply", { userId, username: user.username, message: msg });
   res.json({ message: msg });
 });
 
@@ -102,25 +159,6 @@ router.post("/support/:userId/read", (req, res) => {
   const userId = parseInt(req.params["userId"]!, 10);
   SupportRepo.markRead(userId);
   res.json({ success: true });
-});
-
-// ─── Stats / Overview ─────────────────────────────────────────────────────────
-
-router.get("/stats", (_req, res) => {
-  const manager = BotManager.getInstance();
-  const allBots = manager.getAllStats();
-  const users = UserRepo.getAll();
-  res.json({
-    totalUsers: users.length,
-    totalBots: allBots.length,
-    onlineBots: allBots.filter(b => b.status === "connected").length,
-    unreadSupport: SupportRepo.getUnreadCount(),
-    usersByTier: {
-      free: users.filter(u => u.tier === "free").length,
-      premium: users.filter(u => u.tier === "premium").length,
-      enterprise: users.filter(u => u.tier === "enterprise").length,
-    },
-  });
 });
 
 export default router;
