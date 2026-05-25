@@ -8,17 +8,7 @@ import { IS_POSTGRES } from "./database/Database.js";
 // For SQLite:     tables are created automatically inside getSqliteDb()
 
 if (IS_POSTGRES) {
-  logger.info("PostgreSQL detected — running prisma db push…");
-  try {
-    execSync("pnpm exec prisma db push --skip-generate --accept-data-loss", {
-      stdio: "inherit",
-      cwd: process.cwd(),
-    });
-    logger.info("Prisma schema pushed successfully");
-  } catch (err) {
-    logger.error({ err }, "Prisma db push failed — check DATABASE_URL and schema");
-    process.exit(1);
-  }
+  logger.info("PostgreSQL detected — skipping auto db push (schema already applied)");
 }
 
 // ─── HTTP server ─────────────────────────────────────────────────────────────
