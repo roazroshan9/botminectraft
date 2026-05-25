@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { UserRepo, UserBotRepo, SupportRepo, PaymentRepo } from "../database/Database.js";
 import { BotManager } from "../bot/BotManager.js";
@@ -156,6 +157,67 @@ router.post("/support/:userId/read", async (req, res) => {
   const userId = parseInt(req.params["userId"]!, 10);
   await SupportRepo.markRead(userId);
   res.json({ success: true });
+});
+
+// ─── Seed ─────────────────────────────────────────────────────────────────────
+// POST /api/admin/seed
+// Creates the initial admin user if one doesn't already exist.
+// Protected by requireAdmin (x-admin-password header or adminPassword body field).
+//
+// Body (optional — overrides defaults):
+//   { "username": "admin", "email": "you@example.com", "password": "s3cur3!" }
+
+router.post("/seed", async (req, res) => {
+  try {
+    const {
+      username = "admin",
+      email    = process.env["ADMIN_EMAIL"] ?? "admin@example.com",
+      password = "McBot@Admin2026!",
+    } = (req.body ?? {}) as { username?: string; email?: string; password?: string };
+
+    if (!email?.trim()) {
+      res.status(400).json({ error: "email is required" });
+      return;
+    }
+    if (!password || password.length < 8) {
+      res.status(400).json({ error: "password must be at least 8 characters" });
+      return;
+    }
+
+    const existing = await UserRepo.getByEmail(email.trim().toLowerCase());
+    if (existing) {
+      res.json({
+        success: true,
+        skipped: true,
+        message: `User with email "${existing.email}" already exists (id=${existing.id}). Nothing created.`,
+        user: { id: existing.id, username: existing.username, email: existing.email, tier: existing.tier },
+      });
+      return;
+    }
+
+    if (await UserRepo.getByUsername(username.trim())) {
+      res.status(409).json({ error: `Username "${username.trim()}" is already taken. Pass a different username in the request body.` });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await UserRepo.create({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      passwordHash,
+    });
+
+    await UserRepo.setTier(user.id, "admin");
+
+    res.status(201).json({
+      success: true,
+      skipped: false,
+      message: "Admin user created successfully.",
+      user: { id: user.id, username: user.username, email: user.email, tier: "admin" },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Seed failed. Check server logs for details." });
+  }
 });
 
 export default router;
