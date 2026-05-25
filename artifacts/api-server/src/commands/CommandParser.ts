@@ -6,17 +6,58 @@ export interface ParsedCommand {
 }
 
 const ALIASES: Record<string, string> = {
-  "followme": "follow",
-  "go": "goto",
-  "dig": "mine",
-  "harvest": "farm",
-  "fight": "attack",
-  "kill": "attack",
-  "store": "deposit",
-  "sort": "organize",
-  "inv": "organize",
-  "wp": "waypoint",
-  "tp": "goto",
+  // movement
+  "go":         "goto",
+  "tp":         "goto",
+  "navigate":   "goto",
+  "nav":        "goto",
+  "walk":       "goto",
+  // mining
+  "dig":        "mine",
+  "drill":      "mine",
+  "excavate":   "mine",
+  "collect":    "collect",
+  "gather":     "collect",
+  "get":        "collect",
+  "pick":       "collect",
+  // farming
+  "harvest":    "farm",
+  "grow":       "farm",
+  "crop":       "farm",
+  "chop":       "chop",
+  "tree":       "chop",
+  "woodcut":    "chop",
+  "lumber":     "chop",
+  "cut":        "chop",
+  // combat
+  "fight":      "attack",
+  "kill":       "attack",
+  "slay":       "attack",
+  "attack":     "attack",
+  "protect":    "defend",
+  "guard":      "defend",
+  "shield":     "defend",
+  // follow
+  "followme":   "follow",
+  "come":       "follow",
+  "track":      "follow",
+  // inventory
+  "store":      "deposit",
+  "deposit":    "deposit",
+  "sort":       "organize",
+  "inv":        "organize",
+  // exploration
+  "explore":    "find",
+  "search":     "find",
+  "locate":     "find",
+  "scout":      "patrol",
+  // waypoint
+  "wp":         "waypoint",
+  // misc
+  "halt":       "stop",
+  "cancel":     "stop",
+  "abort":      "stop",
+  "idle":       "stop",
 };
 
 export function parseCommand(input: string): ParsedCommand | null {
@@ -25,7 +66,7 @@ export function parseCommand(input: string): ParsedCommand | null {
 
   const parts = trimmed.split(/\s+/);
   let command = (parts[0] || "").toLowerCase();
-  command = ALIASES[command] || command;
+  command = ALIASES[command] ?? command;
 
   const rest = parts.slice(1);
   const args: string[] = [];
@@ -33,7 +74,7 @@ export function parseCommand(input: string): ParsedCommand | null {
 
   for (const part of rest) {
     const num = parseInt(part, 10);
-    if (!isNaN(num) && amount === undefined) {
+    if (!isNaN(num) && String(num) === part && amount === undefined) {
       amount = num;
     } else {
       args.push(part.toLowerCase());

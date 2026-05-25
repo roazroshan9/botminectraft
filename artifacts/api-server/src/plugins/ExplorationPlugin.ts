@@ -64,7 +64,7 @@ export class ExplorationPlugin {
         this.mcBot.log(`Patrol → ${label} (${Math.round(wp.x)}, ${Math.round(wp.y)}, ${Math.round(wp.z)})`);
         await this.navigateWithRetry(wp.x, wp.y, wp.z, 3, 2);
         this.mcBot.taskQueue.updateProgress(
-          this.mcBot.taskQueue.getCurrent()?.id || "",
+          this.mcBot.taskQueue.getCurrentId(),
           Math.round(((i + 1) / waypoints.length) * 100),
         );
         await sleep(500);

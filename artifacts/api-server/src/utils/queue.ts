@@ -14,14 +14,23 @@ export interface Task {
   cancelFn?: () => void;
 }
 
+type TaskDoneCallback = (task: Task) => void;
+type TaskListCallback = (tasks: Task[]) => void;
+
 export class TaskQueue {
   private queue: Task[] = [];
   private current: Task | null = null;
   private running = false;
   private idCounter = 0;
-  private listeners: Set<(tasks: Task[]) => void> = new Set();
+  private updateListeners: Set<TaskListCallback> = new Set();
+  private doneListeners:   Set<TaskDoneCallback>  = new Set();
 
-  enqueue(name: string, description: string, fn: () => Promise<void>, cancelFn?: () => void): Task {
+  enqueue(
+    name: string,
+    description: string,
+    fn: () => Promise<void>,
+    cancelFn?: () => void,
+  ): Task {
     const task: Task = {
       id: `task_${++this.idCounter}_${Date.now()}`,
       name,
@@ -49,8 +58,10 @@ export class TaskQueue {
 
     try {
       await task.fn();
-      task.status = "done";
-      task.progress = 100;
+      if (task.status !== "cancelled") {
+        task.status = "done";
+        task.progress = 100;
+      }
     } catch (err: unknown) {
       if (task.status !== "cancelled") {
         task.status = "failed";
@@ -61,6 +72,7 @@ export class TaskQueue {
       this.current = null;
       this.running = false;
       this.notify();
+      this.doneListeners.forEach(l => l(task));
       this.run();
     }
   }
@@ -91,17 +103,31 @@ export class TaskQueue {
     }
   }
 
-  getCurrent() { return this.current; }
-  getQueue() { return [...this.queue]; }
-  isRunning() { return this.running; }
+  /** Convenience: update progress on whatever task is currently running */
+  tick(progress: number) {
+    if (this.current) {
+      this.current.progress = Math.min(100, Math.max(0, progress));
+      this.notify();
+    }
+  }
 
-  onUpdate(listener: (tasks: Task[]) => void) {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+  getCurrent():  Task | null  { return this.current; }
+  getQueue():    Task[]       { return [...this.queue]; }
+  isRunning():   boolean      { return this.running; }
+  getCurrentId():string       { return this.current?.id ?? ""; }
+
+  onUpdate(listener: TaskListCallback) {
+    this.updateListeners.add(listener);
+    return () => this.updateListeners.delete(listener);
+  }
+
+  onDone(listener: TaskDoneCallback) {
+    this.doneListeners.add(listener);
+    return () => this.doneListeners.delete(listener);
   }
 
   private notify() {
     const tasks = this.current ? [this.current, ...this.queue] : [...this.queue];
-    this.listeners.forEach(l => l(tasks));
+    this.updateListeners.forEach(l => l(tasks));
   }
 }

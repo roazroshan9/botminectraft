@@ -14,6 +14,7 @@ import { BotManager } from "./bot/BotManager.js";
 import { startMemoryMonitor, getMemoryStats } from "./utils/memory.js";
 import { DEFAULT_CONFIG } from "./config/defaults.js";
 import { verifyToken, COOKIE_NAME } from "./lib/auth.js";
+import { parseCommand } from "./commands/CommandParser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -123,9 +124,14 @@ io.on("connection", (socket) => {
   socket.on("bot:command", async (data: { botId: string; raw?: string; command?: string; args?: string[]; amount?: number }) => {
     if (!isAdmin) { socket.emit("command:error", { error: "Access denied" }); return; }
     try {
-      const result = data.raw
-        ? await manager.getBot(data.botId)?.executeCommand(data.raw.split(" ")[0]!, data.raw.split(" ").slice(1), undefined)
-        : await manager.sendCommand(data.botId, data.command!, data.args, data.amount);
+      let result: string | undefined;
+      if (data.raw) {
+        const parsed = parseCommand(data.raw);
+        if (!parsed) { socket.emit("command:error", { error: "Empty command" }); return; }
+        result = await manager.getBot(data.botId)?.executeCommand(parsed.command, parsed.args, parsed.amount);
+      } else {
+        result = await manager.sendCommand(data.botId, data.command!, data.args, data.amount);
+      }
       socket.emit("command:result", { botId: data.botId, result });
     } catch (err) {
       socket.emit("command:error", { error: err instanceof Error ? err.message : String(err) });
@@ -143,9 +149,14 @@ io.on("connection", (socket) => {
       return;
     }
     try {
-      const result = data.raw
-        ? await bot.executeCommand(data.raw.split(" ")[0]!, data.raw.split(" ").slice(1), undefined)
-        : await manager.sendCommand(data.runtimeId, data.command!, data.args, data.amount);
+      let result: string | undefined;
+      if (data.raw) {
+        const parsed = parseCommand(data.raw);
+        if (!parsed) { socket.emit("command:error", { error: "Empty command" }); return; }
+        result = await bot.executeCommand(parsed.command, parsed.args, parsed.amount);
+      } else {
+        result = await manager.sendCommand(data.runtimeId, data.command!, data.args, data.amount);
+      }
       socket.emit("command:result", { botId: data.runtimeId, result });
     } catch (err) {
       socket.emit("command:error", { error: err instanceof Error ? err.message : String(err) });
@@ -194,6 +205,7 @@ manager.on("bot:health",    (data) => io.emit("bot:health", data));
 manager.on("bot:position",  (data) => io.emit("bot:position", data));
 manager.on("bot:inventory", (data) => io.emit("bot:inventory", data));
 manager.on("bot:tasks",     (data) => io.emit("bot:tasks", data));
+manager.on("bot:task_done", (data) => io.emit("bot:task_done", data));
 manager.on("bot:added",     ()     => io.emit("bots:all", manager.getAllStats()));
 manager.on("bot:removed",   ()     => io.emit("bots:all", manager.getAllStats()));
 
