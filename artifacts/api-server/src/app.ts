@@ -74,6 +74,8 @@ app.get(["/dashboard", "/api/dashboard", "/api/dashboard/"], (_req, res) => {
 });
 
 app.get(["/admin", "/api/admin", "/api/admin/"], (_req, res) => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  res.setHeader("Cache-Control", "no-store");
   res.sendFile(path.join(staticDir, "admin.html"));
 });
 
