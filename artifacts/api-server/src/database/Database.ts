@@ -140,11 +140,21 @@ export function initDatabase(): DatabaseSync {
       timestamp TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT    NOT NULL,
+      expires_at TEXT    NOT NULL,
+      used       INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
     -- Indexes for performance
     CREATE INDEX IF NOT EXISTS idx_user_bots_user_id   ON user_bots(user_id);
     CREATE INDEX IF NOT EXISTS idx_live_logs_bot_id    ON live_logs(bot_id);
     CREATE INDEX IF NOT EXISTS idx_support_user_id     ON support_messages(user_id);
     CREATE INDEX IF NOT EXISTS idx_payments_user_id    ON payments(user_id);
+    CREATE INDEX IF NOT EXISTS idx_prt_user_id         ON password_reset_tokens(user_id);
   `);
 
   logger.info({ path: DB_PATH }, "Database initialized (SaaS schema v2)");
@@ -275,8 +285,37 @@ export const UserRepo = {
   setActive(id: number, active: boolean) {
     getDatabase().prepare("UPDATE users SET is_active = ? WHERE id = ?").run(active ? 1 : 0, id);
   },
+  resetPassword(id: number, passwordHash: string) {
+    getDatabase().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, id);
+  },
   count(): number {
     return (getDatabase().prepare("SELECT COUNT(*) as c FROM users").get() as { c: number }).c;
+  },
+};
+
+type PasswordResetRow = {
+  id: number;
+  user_id: number;
+  token_hash: string;
+  expires_at: string;
+  used: number;
+};
+
+export const PasswordResetRepo = {
+  create(userId: number, tokenHash: string): void {
+    const db = getDatabase();
+    db.prepare("DELETE FROM password_reset_tokens WHERE user_id = ?").run(userId);
+    db.prepare(
+      "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, datetime('now', '+15 minutes'))"
+    ).run(userId, tokenHash);
+  },
+  findValid(userId: number, tokenHash: string): PasswordResetRow | undefined {
+    return getDatabase().prepare(
+      "SELECT * FROM password_reset_tokens WHERE user_id = ? AND token_hash = ? AND used = 0 AND expires_at > datetime('now')"
+    ).get(userId, tokenHash) as PasswordResetRow | undefined;
+  },
+  markUsed(id: number): void {
+    getDatabase().prepare("UPDATE password_reset_tokens SET used = 1 WHERE id = ?").run(id);
   },
 };
 

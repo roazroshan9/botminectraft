@@ -196,6 +196,9 @@ importers:
       mineflayer-pathfinder:
         specifier: ^2.4.5
         version: 2.4.5
+      nodemailer:
+        specifier: ^8.0.8
+        version: 8.0.8
       pino:
         specifier: ^9.14.0
         version: 9.14.0
@@ -230,6 +233,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      '@types/nodemailer':
+        specifier: ^8.0.0
+        version: 8.0.0
       esbuild:
         specifier: 0.27.3
         version: 0.27.3
@@ -1538,6 +1544,9 @@ packages:
   '@types/node@25.6.2':
     resolution: {integrity: sha512-sokuT28dxf9JT5Kady1fsXOvI4HVpjZa95NKT5y9PNTIrs2AsobR4GFAA90ZG8M+nxVRLysCXsVj6eGC7Vbrlw==}
 
+  '@types/nodemailer@8.0.0':
+    resolution: {integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==}
+
   '@types/pg@8.20.0':
     resolution: {integrity: sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==}
 
@@ -2540,6 +2549,10 @@ packages:
 
   node-rsa@0.4.2:
     resolution: {integrity: sha512-Bvso6Zi9LY4otIZefYrscsUpo2mUpiAVIEmSZV2q41sP8tHZoert3Yu6zv4f/RXJqMNZQKCtnhDugIuCma23YA==}
+
+  nodemailer@8.0.8:
+    resolution: {integrity: sha512-p+XsnzXGdtIHXUu2ugxdfG+eX2nehsGhMjW9h0CWj1BhE30hrFz0kh0yIM0/VjUgVsRrDj+80ZO+I1nSkGE4tA==}
+    engines: {node: '>=6.0.0'}
 
   npm-run-path@6.0.0:
     resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==}
@@ -4567,6 +4580,10 @@ snapshots:
     dependencies:
       undici-types: 7.19.2
 
+  '@types/nodemailer@8.0.0':
+    dependencies:
+      '@types/node': 25.6.2
+
   '@types/pg@8.20.0':
     dependencies:
       '@types/node': 25.6.2
@@ -5396,7 +5413,7 @@ snapshots:
   mineflayer-pathfinder@2.4.5:
     dependencies:
       minecraft-data: 3.110.2
-      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
+      prismarine-block: 1.23.0
       prismarine-entity: 2.6.0
       prismarine-item: 1.18.0
       prismarine-nbt: 2.8.0
@@ -5411,7 +5428,7 @@ snapshots:
       minecraft-protocol: 1.66.2
       mojangson: 2.0.4
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
-      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
+      prismarine-block: 1.23.0
       prismarine-chat: 1.13.0
       prismarine-chunk: 1.40.0
       prismarine-entity: 2.6.0
@@ -5479,6 +5496,8 @@ snapshots:
   node-rsa@0.4.2:
     dependencies:
       asn1: 0.2.3
+
+  nodemailer@8.0.8: {}
 
   npm-run-path@6.0.0:
     dependencies:
@@ -5681,7 +5700,7 @@ snapshots:
     dependencies:
       prismarine-registry: 1.12.0
 
-  prismarine-block@1.23.0(prismarine-registry@1.12.0):
+  prismarine-block@1.23.0:
     dependencies:
       minecraft-data: 3.110.2
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
@@ -5690,7 +5709,6 @@ snapshots:
       prismarine-nbt: 2.8.0
       prismarine-registry: 1.12.0
     transitivePeerDependencies:
-      - prismarine-registry
       - supports-color
 
   prismarine-chat@1.13.0:
@@ -5705,7 +5723,7 @@ snapshots:
   prismarine-chunk@1.40.0:
     dependencies:
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
-      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
+      prismarine-block: 1.23.0
       prismarine-nbt: 2.8.0
       prismarine-registry: 1.12.0
       smart-buffer: 4.2.0
@@ -5754,7 +5772,7 @@ snapshots:
   prismarine-registry@1.12.0:
     dependencies:
       minecraft-data: 3.110.2
-      prismarine-block: 1.23.0(prismarine-registry@1.12.0)
+      prismarine-block: 1.23.0
       prismarine-nbt: 2.8.0
     transitivePeerDependencies:
       - supports-color

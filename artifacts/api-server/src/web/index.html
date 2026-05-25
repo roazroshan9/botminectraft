@@ -197,6 +197,25 @@ body {
 .footer-link { text-align: center; margin-top: 20px; font-size: 12px; color: var(--muted); }
 .footer-link a { color: var(--accent); text-decoration: none; }
 
+.forgot-link { text-align: right; margin-top: 8px; font-size: 12px; }
+.forgot-link a { color: var(--muted); text-decoration: none; transition: color 0.2s; cursor: pointer; }
+.forgot-link a:hover { color: var(--accent); }
+.back-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; text-decoration: none; margin-bottom: 20px; transition: color 0.2s; }
+.back-link:hover { color: var(--accent); }
+.otp-input {
+  width: 100%; text-align: center; font-size: 28px; font-weight: 800;
+  letter-spacing: 10px; font-family: monospace; padding: 14px 12px;
+  background: var(--surface2); border: 2px dashed var(--border);
+  color: var(--white); border-radius: 10px; outline: none; transition: border-color 0.2s;
+}
+.otp-input:focus { border-color: var(--accent); }
+.step-badge {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+  color: var(--muted); background: var(--surface2); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;
+}
+.step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
 /* ── Password strength ── */
 .pw-strength { height: 3px; border-radius: 2px; background: var(--border); margin-top: 6px; overflow: hidden; }
 .pw-strength-bar { height: 100%; width: 0; border-radius: 2px; transition: width 0.3s, background 0.3s; }
@@ -305,6 +324,40 @@ body {
     </div>
     <button class="btn-submit" id="btn-login" onclick="doLogin()">Sign In</button>
     <div class="msg" id="msg-login"></div>
+    <div class="forgot-link"><a onclick="showForgot()">Forgot password?</a></div>
+  </div>
+
+  <!-- FORGOT PASSWORD — STEP 1: Enter Email -->
+  <div id="form-forgot-send" style="display:none">
+    <a class="back-link" onclick="backToLogin()">← Back to sign in</a>
+    <div class="step-badge"><span class="step-dot"></span> Step 1 of 2 — Enter your email</div>
+    <div class="form-group">
+      <label class="form-label">Registered Email</label>
+      <input class="form-input" type="email" id="fp-email" placeholder="you@example.com" autocomplete="email" />
+    </div>
+    <button class="btn-submit" id="btn-fp-send" onclick="doForgotSend()">Send Reset Code</button>
+    <div class="msg" id="msg-fp-send"></div>
+  </div>
+
+  <!-- FORGOT PASSWORD — STEP 2: Enter OTP + New Password -->
+  <div id="form-forgot-verify" style="display:none">
+    <a class="back-link" onclick="backToLogin()">← Back to sign in</a>
+    <div class="step-badge"><span class="step-dot"></span> Step 2 of 2 — Enter your code</div>
+    <div class="form-group">
+      <label class="form-label">6-Digit Reset Code</label>
+      <input class="otp-input" type="text" id="fp-otp" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">New Password</label>
+      <input class="form-input" type="password" id="fp-newpass" placeholder="Min. 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)" />
+      <div class="pw-strength"><div class="pw-strength-bar" id="pw-bar"></div></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm New Password</label>
+      <input class="form-input" type="password" id="fp-newpass2" placeholder="Repeat password" autocomplete="new-password" />
+    </div>
+    <button class="btn-submit" id="btn-fp-verify" onclick="doForgotVerify()">Reset Password</button>
+    <div class="msg" id="msg-fp-verify"></div>
   </div>
 
   <!-- REGISTER FORM -->
@@ -335,11 +388,34 @@ body {
 </div>
 
 <script>
+let _fpEmail = '';
+
 function switchTab(tab) {
   document.getElementById('tab-login').className = 'tab' + (tab === 'login' ? ' active' : '');
   document.getElementById('tab-register').className = 'tab' + (tab === 'register' ? ' active' : '');
   document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
   document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('form-forgot-send').style.display = 'none';
+  document.getElementById('form-forgot-verify').style.display = 'none';
+  document.querySelector('.tabs').style.display = 'flex';
+}
+
+function showForgot() {
+  document.querySelector('.tabs').style.display = 'none';
+  document.getElementById('form-login').style.display = 'none';
+  document.getElementById('form-register').style.display = 'none';
+  document.getElementById('form-forgot-send').style.display = 'block';
+  document.getElementById('form-forgot-verify').style.display = 'none';
+}
+
+function showForgotVerify() {
+  document.getElementById('form-forgot-send').style.display = 'none';
+  document.getElementById('form-forgot-verify').style.display = 'block';
+}
+
+function backToLogin() {
+  switchTab('login');
+  _fpEmail = '';
 }
 
 function showMsg(id, text, type) {
@@ -437,9 +513,64 @@ async function doRegister() {
   }
 }
 
+async function doForgotSend() {
+  const email = document.getElementById('fp-email').value.trim();
+  if (!email) { showMsg('msg-fp-send', 'Please enter your email address', 'error'); return; }
+
+  setLoading('btn-fp-send', true, 'Send Reset Code');
+  try {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showMsg('msg-fp-send', data.error || 'Failed to send code', 'error'); return; }
+    _fpEmail = email;
+    showMsg('msg-fp-send', '✓ Code sent! Check your email inbox.', 'success');
+    setTimeout(() => showForgotVerify(), 1200);
+  } catch {
+    showMsg('msg-fp-send', 'Connection error. Please try again.', 'error');
+  } finally {
+    setLoading('btn-fp-send', false, 'Send Reset Code');
+  }
+}
+
+async function doForgotVerify() {
+  const otp = document.getElementById('fp-otp').value.trim();
+  const newPassword = document.getElementById('fp-newpass').value;
+  const newPassword2 = document.getElementById('fp-newpass2').value;
+
+  if (!otp || otp.length !== 6) { showMsg('msg-fp-verify', 'Please enter the 6-digit code', 'error'); return; }
+  if (!newPassword) { showMsg('msg-fp-verify', 'Please enter a new password', 'error'); return; }
+  if (newPassword.length < 8) { showMsg('msg-fp-verify', 'Password must be at least 8 characters', 'error'); return; }
+  if (newPassword !== newPassword2) { showMsg('msg-fp-verify', 'Passwords do not match', 'error'); return; }
+
+  setLoading('btn-fp-verify', true, 'Reset Password');
+  try {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: _fpEmail, otp, newPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showMsg('msg-fp-verify', data.error || 'Reset failed', 'error'); return; }
+    showMsg('msg-fp-verify', '✓ Password reset! Redirecting to sign in…', 'success');
+    setTimeout(() => backToLogin(), 1800);
+  } catch {
+    showMsg('msg-fp-verify', 'Connection error. Please try again.', 'error');
+  } finally {
+    setLoading('btn-fp-verify', false, 'Reset Password');
+  }
+}
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
+    const fpSend = document.getElementById('form-forgot-send').style.display !== 'none';
+    const fpVerify = document.getElementById('form-forgot-verify').style.display !== 'none';
+    if (fpSend) { doForgotSend(); return; }
+    if (fpVerify) { doForgotVerify(); return; }
     const tab = document.getElementById('tab-login').classList.contains('active') ? 'login' : 'register';
     tab === 'login' ? doLogin() : doRegister();
   }

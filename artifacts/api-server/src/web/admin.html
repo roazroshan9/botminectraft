@@ -611,10 +611,61 @@ document.getElementById('pass-input').addEventListener('keydown', e => {
 const saved = localStorage.getItem('cb_admin_pw');
 if (saved) initApp(saved);
 
-function doLogin() {
+async function doLogin() {
   const p = document.getElementById('pass-input').value.trim();
   if (!p) return;
-  initApp(p);
+  const btn = document.querySelector('#login-wrap .btn-primary');
+  const errEl = document.getElementById('login-err');
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  errEl.textContent = '';
+  try {
+    const res = await fetch('/api/admin-auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: p }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 429) {
+        errEl.innerHTML = `🔒 ${data.error}`;
+        startLockoutCountdown(data.retryAfterSec || 60);
+      } else {
+        errEl.textContent = data.error || 'Incorrect password';
+      }
+      btn.disabled = false;
+      btn.textContent = 'Enter Dashboard';
+      return;
+    }
+    initApp(p);
+  } catch {
+    errEl.textContent = 'Server unreachable. Please try again.';
+    btn.disabled = false;
+    btn.textContent = 'Enter Dashboard';
+  }
+}
+
+let _lockTimer = null;
+function startLockoutCountdown(secs) {
+  if (_lockTimer) clearInterval(_lockTimer);
+  const btn = document.querySelector('#login-wrap .btn-primary');
+  const errEl = document.getElementById('login-err');
+  let remaining = secs;
+  btn.disabled = true;
+  const tick = () => {
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    btn.textContent = `Locked — ${m}:${String(s).padStart(2,'0')}`;
+    errEl.innerHTML = `🔒 Too many failed attempts. Try again in ${m}:${String(s).padStart(2,'0')}.`;
+    remaining--;
+    if (remaining < 0) {
+      clearInterval(_lockTimer);
+      btn.disabled = false;
+      btn.textContent = 'Enter Dashboard';
+      errEl.textContent = '';
+    }
+  };
+  tick();
+  _lockTimer = setInterval(tick, 1000);
 }
 
 function initApp(password) {
