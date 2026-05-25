@@ -1,0 +1,9 @@
+# Standalone .dockerignore for builds where context = artifacts/api-server
+# (the root-level Dockerfile is recommended instead for monorepo builds)
+node_modules
+dist
+data
+logs
+*.log
+.env
+.env.*

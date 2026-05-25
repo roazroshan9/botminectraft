@@ -279,9 +279,25 @@ export class MinecraftBot extends EventEmitter {
       // ── Navigation ────────────────────────────────────────────────────────
       case "goto":
       case "go": {
-        const x = parseFloat(args[0] ?? "0");
-        const y = parseFloat(args[1] ?? "64");
-        const z = parseFloat(args[2] ?? "0");
+        // parseCommand extracts the first non-negative integer as `amount`.
+        // For goto the first token is the X coord, which can be positive or negative.
+        // Reconstruction: if amount captured X, args holds [y, z]; otherwise all in args.
+        let x: number, y: number, z: number;
+        if (args.length >= 3) {
+          // All three coords came through as args (e.g. all were negative or non-integer)
+          x = parseFloat(args[0]!); y = parseFloat(args[1]!); z = parseFloat(args[2]!);
+        } else if (amount !== undefined && args.length === 2) {
+          // amount = X, args = [Y, Z]
+          x = amount; y = parseFloat(args[0]!); z = parseFloat(args[1]!);
+        } else if (amount !== undefined && args.length === 1) {
+          // amount = X, args = [Y], Z defaults to 0
+          x = amount; y = parseFloat(args[0]!); z = 0;
+        } else if (amount !== undefined && args.length === 0) {
+          // Only X provided
+          x = amount; y = 64; z = 0;
+        } else {
+          x = parseFloat(args[0] ?? "0"); y = parseFloat(args[1] ?? "64"); z = parseFloat(args[2] ?? "0");
+        }
         if (isNaN(x) || isNaN(y) || isNaN(z)) return "Usage: goto <x> <y> <z>";
         const task = this.taskQueue.enqueue(
           "goto", `Navigate to ${Math.round(x)} ${Math.round(y)} ${Math.round(z)}`,

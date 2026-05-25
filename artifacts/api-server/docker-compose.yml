@@ -1,25 +1,64 @@
-version: "3.9"
+# ─────────────────────────────────────────────────────────────────────────────
+# CraftBot — Docker Compose (local / self-hosted)
+#
+# Usage:
+#   cp .env.example .env        # create your .env file
+#   docker compose up -d        # build + start
+#   docker compose logs -f      # follow logs
+#   docker compose down         # stop
+#
+# The Dockerfile lives at the REPO ROOT.  Run compose from the repo root:
+#   docker compose -f artifacts/api-server/docker-compose.yml up -d
+# Or copy this file to the repo root and run: docker compose up -d
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
-  mcbot:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-admin}
-      - DATA_DIR=/app/data
-    volumes:
-      - mcbot_data:/app/data
-      - mcbot_logs:/app/logs
+  craftbot:
+    build:
+      context: ../../           # repo root — needed for pnpm workspace resolution
+      dockerfile: Dockerfile    # root-level Dockerfile
+    image: craftbot:latest
+    container_name: craftbot
     restart: unless-stopped
+
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-changeme_please}
+      JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
+      DATA_DIR: /workspace/artifacts/api-server/data
+      KEEP_ALIVE: ${KEEP_ALIVE:-false}            # set true + KEEP_ALIVE_URL for free-host
+      KEEP_ALIVE_URL: ${KEEP_ALIVE_URL:-}
+      KEEP_ALIVE_EXTERNAL_URL: ${KEEP_ALIVE_EXTERNAL_URL:-}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+
+    volumes:
+      - craftbot_data:/workspace/artifacts/api-server/data
+      - craftbot_logs:/workspace/artifacts/api-server/logs
+
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "fetch('http://localhost:'+process.env.PORT+'/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 20s
+
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 128m
 
 volumes:
-  mcbot_data:
-  mcbot_logs:
+  craftbot_data:
+    driver: local
+  craftbot_logs:
+    driver: local

@@ -1,0 +1,44 @@
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── Node modules (rebuilt inside Docker) ─────────────────────────────────────
+node_modules
+**/node_modules
+
+# ── Build outputs (rebuilt inside Docker) ────────────────────────────────────
+**/dist
+artifacts/api-server/dist
+
+# ── Data & logs (mounted as volumes) ─────────────────────────────────────────
+artifacts/api-server/data
+artifacts/api-server/logs
+
+# ── Dev / local config ────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.local
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# ── Test artifacts ────────────────────────────────────────────────────────────
+coverage
+*.test.ts
+*.spec.ts
+
+# ── CI / Deploy config (not needed at runtime) ────────────────────────────────
+.github
+.replit
+replit.md
+attached_assets
+scripts
+
+# ── Non-api-server artifacts (keep only what the Dockerfile needs) ────────────
+artifacts/mockup-sandbox

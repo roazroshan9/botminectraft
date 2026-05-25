@@ -74,7 +74,9 @@ export function parseCommand(input: string): ParsedCommand | null {
 
   for (const part of rest) {
     const num = parseInt(part, 10);
-    if (!isNaN(num) && String(num) === part && amount === undefined) {
+    // Only treat a token as amount if it is a non-negative integer with no extra chars.
+    // Negative numbers (e.g. "-200" as a Z coordinate) are kept as positional args.
+    if (!isNaN(num) && num >= 0 && String(num) === part && amount === undefined) {
       amount = num;
     } else {
       args.push(part.toLowerCase());

@@ -1,21 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CraftBot — Render.com deployment configuration
+#
+# Deploy steps:
+#   1. Connect your GitHub repo to Render
+#   2. Render auto-detects this file
+#   3. Set DASHBOARD_PASSWORD in the Render dashboard (or use the generated one)
+#   4. Set KEEP_ALIVE_URL to your service URL after first deploy
+#      e.g. https://minecraft-ai-bot.onrender.com
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
   - type: web
     name: minecraft-ai-bot
     runtime: node
     plan: free
-    buildCommand: pnpm install && pnpm run build
-    startCommand: node --enable-source-maps ./dist/index.mjs
+
+    # Run from repo root so pnpm workspace resolution works
+    rootDir: .
+
+    buildCommand: |
+      npm install -g pnpm@9 &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @workspace/api-server run build
+
+    startCommand: node --enable-source-maps ./artifacts/api-server/dist/index.mjs
+
+    # Render sets PORT automatically; healthz is a lightweight endpoint
+    healthCheckPath: /api/healthz
+
     envVars:
-      - key: PORT
-        value: 10000
       - key: NODE_ENV
         value: production
+
+      - key: PORT
+        value: 10000
+
+      # Auto-generated secure password for the admin dashboard
       - key: DASHBOARD_PASSWORD
         generateValue: true
+
+      # Auto-generated JWT signing secret
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Path where the persistent disk is mounted
       - key: DATA_DIR
-        value: /opt/render/project/src/data
+        value: /opt/render/project/src/artifacts/api-server/data
+
+      # ── Keep-Alive ────────────────────────────────────────────────────────
+      # Set this to your Render service URL after first deploy to prevent
+      # the free-tier 15-minute sleep.  Render also sets RENDER_EXTERNAL_URL
+      # automatically, so keepalive.ts will use that as a fallback.
+      # - key: KEEP_ALIVE_URL
+      #   value: https://minecraft-ai-bot.onrender.com
+
+      # Optional: webhook URL for external uptime monitors (UptimeRobot, etc.)
+      # - key: KEEP_ALIVE_EXTERNAL_URL
+      #   value: https://stats.uptimerobot.com/xxxxxxxx
+
+      # Set to "false" to disable keep-alive (e.g. on a paid plan that never sleeps)
+      - key: KEEP_ALIVE
+        value: "true"
+
+      # Trust the Render proxy so express-rate-limit gets real client IPs
+      - key: TRUST_PROXY
+        value: "1"
+
     disk:
       name: mcbot-data
-      mountPath: /opt/render/project/src/data
+      mountPath: /opt/render/project/src/artifacts/api-server/data
       sizeGB: 1
-    healthCheckPath: /api/health

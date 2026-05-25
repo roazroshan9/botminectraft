@@ -15,11 +15,17 @@ import { startMemoryMonitor, getMemoryStats } from "./utils/memory.js";
 import { DEFAULT_CONFIG } from "./config/defaults.js";
 import { verifyToken, COOKIE_NAME } from "./lib/auth.js";
 import { parseCommand } from "./commands/CommandParser.js";
+import { startKeepalive } from "./utils/keepalive.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app: Express = express();
 const httpServer = createServer(app);
+
+// Trust the first proxy hop — required for Render, Railway, Fly.io, Nginx, etc.
+// so express-rate-limit sees the real client IP from X-Forwarded-For.
+const trustProxy = process.env["TRUST_PROXY"] ?? "1";
+app.set("trust proxy", isNaN(Number(trustProxy)) ? trustProxy : Number(trustProxy));
 
 export const io = new SocketIOServer(httpServer, {
   cors: { origin: "*" },
@@ -208,6 +214,9 @@ manager.on("bot:tasks",     (data) => io.emit("bot:tasks", data));
 manager.on("bot:task_done", (data) => io.emit("bot:task_done", data));
 manager.on("bot:added",     ()     => io.emit("bots:all", manager.getAllStats()));
 manager.on("bot:removed",   ()     => io.emit("bots:all", manager.getAllStats()));
+
+// Start keep-alive self-ping (prevents free-tier sleep on Render/Railway/Fly)
+startKeepalive();
 
 // Stream auth_code events to the owning user's private Socket.io room
 manager.on("bot:auth_code", (data: { id: string; userId?: number; url: string; code: string; expiresIn: number }) => {
