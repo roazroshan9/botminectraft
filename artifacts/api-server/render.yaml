@@ -1,72 +1,96 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # CraftBot — Render.com deployment configuration
 #
-# Deploy steps:
-#   1. Connect your GitHub repo to Render
-#   2. Render auto-detects this file
-#   3. Set DASHBOARD_PASSWORD in the Render dashboard (or use the generated one)
-#   4. Set KEEP_ALIVE_URL to your service URL after first deploy
-#      e.g. https://minecraft-ai-bot.onrender.com
+# DEPLOY STEPS:
+#   1. Push this repo to GitHub (or GitLab).
+#   2. Go to https://dashboard.render.com → New → Blueprint.
+#   3. Connect your repo — Render will find this file automatically.
+#   4. In the "Environment" tab, set the secret values marked below.
+#   5. Click "Apply" to deploy.
+#   6. After first deploy, copy your service URL and set KEEP_ALIVE_URL.
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
   - type: web
-    name: minecraft-ai-bot
+    name: craftbot-api
     runtime: node
     plan: free
 
-    # Run from repo root so pnpm workspace resolution works
+    # Build from the monorepo root so pnpm workspace resolution works
     rootDir: .
 
-    buildCommand: |
-      npm install -g pnpm@9 &&
+    buildCommand: >
+      npm install -g pnpm@10 &&
       pnpm install --frozen-lockfile &&
       pnpm --filter @workspace/api-server run build
 
     startCommand: node --enable-source-maps ./artifacts/api-server/dist/index.mjs
 
-    # Render sets PORT automatically; healthz is a lightweight endpoint
+    # Render injects PORT automatically; healthz is the lightweight probe
     healthCheckPath: /api/healthz
 
     envVars:
+      # ── Runtime ────────────────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
 
       - key: PORT
         value: 10000
 
-      # Auto-generated secure password for the admin dashboard
-      - key: DASHBOARD_PASSWORD
-        generateValue: true
-
-      # Auto-generated JWT signing secret
-      - key: JWT_SECRET
-        generateValue: true
-
-      # Path where the persistent disk is mounted
-      - key: DATA_DIR
-        value: /opt/render/project/src/artifacts/api-server/data
-
-      # ── Keep-Alive ────────────────────────────────────────────────────────
-      # Set this to your Render service URL after first deploy to prevent
-      # the free-tier 15-minute sleep.  Render also sets RENDER_EXTERNAL_URL
-      # automatically, so keepalive.ts will use that as a fallback.
-      # - key: KEEP_ALIVE_URL
-      #   value: https://minecraft-ai-bot.onrender.com
-
-      # Optional: webhook URL for external uptime monitors (UptimeRobot, etc.)
-      # - key: KEEP_ALIVE_EXTERNAL_URL
-      #   value: https://stats.uptimerobot.com/xxxxxxxx
-
-      # Set to "false" to disable keep-alive (e.g. on a paid plan that never sleeps)
-      - key: KEEP_ALIVE
-        value: "true"
-
-      # Trust the Render proxy so express-rate-limit gets real client IPs
+      # Trust the Render reverse-proxy so rate-limiting sees real client IPs
       - key: TRUST_PROXY
         value: "1"
 
+      # ── Database ───────────────────────────────────────────────────────────
+      # Set this in the Render dashboard → Environment tab.
+      # Use the Supabase session-pooler URL (port 5432):
+      #   postgresql://postgres.<ref>:<pass>@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+
+      # ── Auth ───────────────────────────────────────────────────────────────
+      # Set in Render dashboard. Use the value from your Replit secrets.
+      - key: JWT_SECRET
+        sync: false
+
+      # ── Admin dashboard password ────────────────────────────────────────────
+      # Set in Render dashboard. Use the value from your Replit secrets.
+      - key: DASHBOARD_PASSWORD
+        sync: false
+
+      # ── Email / SMTP ───────────────────────────────────────────────────────
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+
+      - key: SMTP_PORT
+        value: "587"
+
+      - key: SMTP_USER
+        value: roazroshan@gmail.com
+
+      - key: SMTP_FROM
+        value: roazroshan@gmail.com
+
+      # Set in Render dashboard — your Gmail App Password.
+      - key: SMTP_PASS
+        sync: false
+
+      # ── Persistent disk path ───────────────────────────────────────────────
+      - key: DATA_DIR
+        value: /opt/render/project/src/artifacts/api-server/data
+
+      # ── Keep-Alive (free tier) ─────────────────────────────────────────────
+      # Prevents the free-tier service from sleeping after 15 min of inactivity.
+      # After your first deploy, set this to your Render service URL, e.g.:
+      #   https://craftbot-api.onrender.com
+      # Render also sets RENDER_EXTERNAL_URL automatically as a fallback.
+      - key: KEEP_ALIVE
+        value: "true"
+
+      # - key: KEEP_ALIVE_URL
+      #   value: https://craftbot-api.onrender.com
+
     disk:
-      name: mcbot-data
+      name: craftbot-data
       mountPath: /opt/render/project/src/artifacts/api-server/data
       sizeGB: 1
