@@ -20,9 +20,8 @@ services:
     rootDir: .
 
     buildCommand: >
-      npm install -g pnpm@10 &&
-      pnpm install --frozen-lockfile &&
-      pnpm --filter @workspace/api-server run build
+      npx pnpm@10 install --frozen-lockfile &&
+      npx pnpm@10 --filter @workspace/api-server run build
 
     startCommand: node --enable-source-maps ./artifacts/api-server/dist/index.mjs
 
