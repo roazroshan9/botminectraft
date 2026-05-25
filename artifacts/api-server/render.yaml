@@ -75,10 +75,6 @@ services:
       - key: SMTP_PASS
         sync: false
 
-      # ── Persistent disk path ───────────────────────────────────────────────
-      - key: DATA_DIR
-        value: /opt/render/project/src/artifacts/api-server/data
-
       # ── Keep-Alive (free tier) ─────────────────────────────────────────────
       # Prevents the free-tier service from sleeping after 15 min of inactivity.
       # After your first deploy, set this to your Render service URL, e.g.:
@@ -89,8 +85,3 @@ services:
 
       # - key: KEEP_ALIVE_URL
       #   value: https://craftbot-api.onrender.com
-
-    disk:
-      name: craftbot-data
-      mountPath: /opt/render/project/src/artifacts/api-server/data
-      sizeGB: 1
