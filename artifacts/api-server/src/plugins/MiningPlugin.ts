@@ -233,7 +233,7 @@ export class MiningPlugin {
     const picks = ["netherite_pickaxe","diamond_pickaxe","iron_pickaxe","stone_pickaxe","wooden_pickaxe"];
     for (const name of picks) {
       const item = this.bot.inventory.findInventoryItem(
-        this.bot.registry.itemsByName[name]?.id ?? -1, null,
+        this.bot.registry.itemsByName[name]?.id ?? -1, null, false,
       );
       if (item) { try { await this.bot.equip(item, "hand"); } catch {} return; }
     }
@@ -244,7 +244,7 @@ export class MiningPlugin {
     const pos = this.bot.entity?.position;
     if (!pos) return;
     const torchId = this.bot.registry.itemsByName["torch"]?.id ?? 50;
-    const torch = this.bot.inventory.findInventoryItem(torchId, null);
+    const torch = this.bot.inventory.findInventoryItem(torchId, null, false);
     if (!torch) return;
 
     const nearTorch = this.bot.findBlock({

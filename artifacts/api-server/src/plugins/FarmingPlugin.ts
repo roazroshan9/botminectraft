@@ -222,7 +222,7 @@ export class FarmingPlugin {
   // ── Replant seeds on empty farmland ────────────────────────────────────────
   private async replantCrops(seedName: string) {
     const seed = this.bot.inventory.findInventoryItem(
-      this.bot.registry.itemsByName[seedName]?.id ?? -1, null,
+      this.bot.registry.itemsByName[seedName]?.id ?? -1, null, false,
     );
     if (!seed) { this.mcBot.log(`No ${seedName} to replant`); return; }
 
@@ -264,7 +264,7 @@ export class FarmingPlugin {
     const axes = ["netherite_axe", "diamond_axe", "iron_axe", "stone_axe", "wooden_axe"];
     for (const name of axes) {
       const item = this.bot.inventory.findInventoryItem(
-        this.bot.registry.itemsByName[name]?.id ?? -1, null,
+        this.bot.registry.itemsByName[name]?.id ?? -1, null, false,
       );
       if (item) { try { await this.bot.equip(item, "hand"); } catch {} return; }
     }

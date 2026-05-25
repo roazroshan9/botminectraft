@@ -207,7 +207,7 @@ export class CombatPlugin {
   private async tryUseHealingPotion(): Promise<void> {
     for (const name of HEALING_POTIONS) {
       const item = this.bot.inventory.findInventoryItem(
-        this.bot.registry.itemsByName[name]?.id ?? -1, null,
+        this.bot.registry.itemsByName[name]?.id ?? -1, null, false,
       );
       if (item) {
         try {
@@ -227,7 +227,7 @@ export class CombatPlugin {
     ];
     for (const name of foods) {
       const item = this.bot.inventory.findInventoryItem(
-        this.bot.registry.itemsByName[name]?.id ?? -1, null,
+        this.bot.registry.itemsByName[name]?.id ?? -1, null, false,
       );
       if (item) {
         try {
@@ -296,7 +296,7 @@ export class CombatPlugin {
   private async equipBestWeapon(): Promise<void> {
     for (const name of WEAPONS) {
       const item = this.bot.inventory.findInventoryItem(
-        this.bot.registry.itemsByName[name]?.id ?? -1, null,
+        this.bot.registry.itemsByName[name]?.id ?? -1, null, false,
       );
       if (item) {
         try { await this.bot.equip(item, "hand"); return; } catch {}
@@ -306,7 +306,7 @@ export class CombatPlugin {
 
   private async equipShield(): Promise<void> {
     const shield = this.bot.inventory.findInventoryItem(
-      this.bot.registry.itemsByName["shield"]?.id ?? -1, null,
+      this.bot.registry.itemsByName["shield"]?.id ?? -1, null, false,
     );
     if (shield) {
       try { await this.bot.equip(shield, "off-hand"); } catch {}

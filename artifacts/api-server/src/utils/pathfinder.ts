@@ -1,10 +1,17 @@
 import { createRequire } from "node:module";
+import type { Bot, Plugin } from "mineflayer";
 
 const require = createRequire(import.meta.url);
 
+export interface MovementsInstance {
+  allowSprinting: boolean;
+  allowParkour:   boolean;
+  canDig:         boolean;
+}
+
 const mineflayerPathfinder = require("mineflayer-pathfinder") as {
-  pathfinder: unknown;
-  Movements: new (...args: unknown[]) => unknown;
+  pathfinder: Plugin;
+  Movements: new (bot: Bot) => MovementsInstance;
   goals: {
     GoalNear:   new (x: number, y: number, z: number, r: number) => unknown;
     GoalBlock:  new (x: number, y: number, z: number) => unknown;
@@ -15,5 +22,5 @@ const mineflayerPathfinder = require("mineflayer-pathfinder") as {
 };
 
 export const pathfinder = mineflayerPathfinder.pathfinder;
-export const Movements = mineflayerPathfinder.Movements;
-export const goals = mineflayerPathfinder.goals;
+export const Movements  = mineflayerPathfinder.Movements;
+export const goals      = mineflayerPathfinder.goals;

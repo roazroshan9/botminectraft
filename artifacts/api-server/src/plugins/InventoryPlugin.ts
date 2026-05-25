@@ -32,7 +32,7 @@ export class InventoryPlugin {
   private async dropJunk() {
     for (const name of JUNK_ITEMS) {
       const item = this.bot.inventory.findInventoryItem(
-        this.bot.registry.itemsByName[name]?.id ?? -1, null
+        this.bot.registry.itemsByName[name]?.id ?? -1, null, false
       );
       if (item && item.count > 32) {
         try {
@@ -54,7 +54,7 @@ export class InventoryPlugin {
     for (const { slot, items } of armorSets) {
       for (const name of items) {
         const item = this.bot.inventory.findInventoryItem(
-          this.bot.registry.itemsByName[name]?.id ?? -1, null
+          this.bot.registry.itemsByName[name]?.id ?? -1, null, false
         );
         if (item) {
           try {
@@ -69,7 +69,7 @@ export class InventoryPlugin {
   async eatFood(): Promise<void> {
     for (const name of FOOD_ITEMS) {
       const item = this.bot.inventory.findInventoryItem(
-        this.bot.registry.itemsByName[name]?.id ?? -1, null
+        this.bot.registry.itemsByName[name]?.id ?? -1, null, false
       );
       if (item) {
         try {

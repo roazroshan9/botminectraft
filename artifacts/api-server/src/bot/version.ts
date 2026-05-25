@@ -19,7 +19,7 @@ export async function detectServerVersion(host: string, port: number): Promise<s
     let buffer = Buffer.alloc(0);
 
     socket.on("data", (data) => {
-      buffer = Buffer.concat([buffer, data]);
+      buffer = Buffer.concat([buffer, data as Buffer]);
       try {
         let offset = 0;
         const packetLen = readVarInt(buffer, offset);

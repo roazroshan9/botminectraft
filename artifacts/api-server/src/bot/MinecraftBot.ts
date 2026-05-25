@@ -534,7 +534,7 @@ export class MinecraftBot extends EventEmitter {
 
     // Equip fishing rod
     const rodId = this.bot?.registry.itemsByName["fishing_rod"]?.id ?? -1;
-    const rod = this.bot?.inventory.findInventoryItem(rodId, null);
+    const rod = this.bot?.inventory.findInventoryItem(rodId, null, false);
     if (!rod) { this.log("No fishing rod in inventory"); return; }
     try { await this.bot?.equip(rod, "hand"); } catch { return; }
 
@@ -601,7 +601,7 @@ export class MinecraftBot extends EventEmitter {
       position:          bot?.entity?.position
         ? { x: Math.round(bot.entity.position.x), y: Math.round(bot.entity.position.y), z: Math.round(bot.entity.position.z) }
         : null,
-      dimension:         (bot as unknown as Record<string, unknown>)?.game?.dimension as string ?? "overworld",
+      dimension:         bot?.game?.dimension ?? "overworld",
       uptime:            this.status === "connected" ? Date.now() - this.startedAt : 0,
       reconnectAttempts: this.reconnectAttempts,
       currentTask:       this.taskQueue.getCurrent()?.name ?? null,

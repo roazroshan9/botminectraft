@@ -58,12 +58,12 @@ export class TaskQueue {
 
     try {
       await task.fn();
-      if (task.status !== "cancelled") {
+      if ((task.status as TaskStatus) !== "cancelled") {
         task.status = "done";
         task.progress = 100;
       }
     } catch (err: unknown) {
-      if (task.status !== "cancelled") {
+      if ((task.status as TaskStatus) !== "cancelled") {
         task.status = "failed";
         task.error = err instanceof Error ? err.message : String(err);
       }

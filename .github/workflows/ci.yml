@@ -40,8 +40,5 @@ jobs:
       - name: Build API server
         run: pnpm --filter @workspace/api-server run build
 
-      - name: Typecheck API server (non-blocking)
-        run: pnpm --filter @workspace/api-server run typecheck || true
-        # Pre-existing type mismatches in mineflayer/prismarine third-party types
-        # do not affect the runtime build. This step reports issues without
-        # failing the CI pipeline — fix the warnings progressively over time.
+      - name: Typecheck API server
+        run: pnpm --filter @workspace/api-server run typecheck

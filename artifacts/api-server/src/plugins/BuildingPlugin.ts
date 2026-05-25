@@ -43,7 +43,7 @@ function makeWalls(x: number, y: number, z: number, w: number, h: number, d: num
   for (let dy = 0; dy < h; dy++) {
     for (let dx = 0; dx < w; dx++) {
       if (dy === 0 || dy === h - 1 || dx === 0 || dx === w - 1)
-        blocks.push({ dx: x + dx, dy: y + dy, dz: z }, { dx: x + dx, dy: y + dy, dz: z + d - 1, block } as Blueprint["blocks"][0]);
+        blocks.push({ dx: x + dx, dy: y + dy, dz: z, block }, { dx: x + dx, dy: y + dy, dz: z + d - 1, block });
     }
     for (let dz = 1; dz < d - 1; dz++) {
       blocks.push({ dx: x, dy: y + dy, dz: z + dz, block }, { dx: x + w - 1, dy: y + dy, dz: z + dz, block } as Blueprint["blocks"][0]);
@@ -123,7 +123,7 @@ export class BuildingPlugin {
     if (existing && existing.name !== "air") return;
 
     const item = this.bot.inventory.findInventoryItem(
-      this.bot.registry.itemsByName[blockName]?.id ?? -1, null
+      this.bot.registry.itemsByName[blockName]?.id ?? -1, null, false
     );
     if (!item) {
       await this.gatherMaterial(blockName);
